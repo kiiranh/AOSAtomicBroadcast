@@ -190,4 +190,11 @@ public class Message implements Comparable<Message> {
 		    Integer.valueOf(other.timeStamp));
 	}
     }
+
+    // public static void main(String[] args) {
+    // Message msg = new Message(2, 1, "9999-999:999:999:999:enqueue 9999");
+    // System.out.println(msg.toString());
+    // System.out.println(msg.toString().getBytes().toString());
+    // System.out.println(msg.toString().getBytes().length);
+    // }
 }

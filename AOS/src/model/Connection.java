@@ -156,19 +156,57 @@ public class Connection {
 	}
     }
 
-    public void broadcast(Message msg) {
-	// TODO
+    synchronized public void broadcast(Message msg) throws IOException {
 	// 1. Convert Message to String
 	// 2. Broadcast over All Channels.
+	for (SctpChannel channel : channelList) {
+	    cbuf.clear();
+	    buf.clear();
+	    cbuf.put(msg.toString()).flip();
+	    encoder.encode(cbuf, buf, true);
+	    buf.flip();
+
+	    /* send the message on the US stream */
+	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
+		    Stream.DATA.value);
+	    channel.send(buf, messageInfo);
+	}
+
+	System.out.println("Broadcast Message: " + msg.toString());
+	cbuf.clear();
+	buf.clear();
+
     }
 
-    public LinkedList<Message> receive() {
+    synchronized public LinkedList<Message> receive() throws IOException {
 	LinkedList<Message> receivedMessages = new LinkedList<Message>();
-	
-	// TODO 
+
+	// TODO
 	// 1. Read messages from channel
-	// 2. Parse messages and return queue
-	
+	MessageInfo messageInfo = null;
+	buf.clear();
+	System.out.println("Checking message on Channel...");
+
+	for (SctpChannel channel : channelList) {
+	    // Get all available messages from each channel
+	    messageInfo = channel.receive(buf, System.out, null);
+	    buf.flip();
+	    if (buf.remaining() > 0
+		    && messageInfo.streamNumber() == Stream.DATA.value) {
+		String msgStr = decoder.decode(buf).toString();
+
+		// 2. Parse message and add to queue
+		Message msg = Message.parseMessage(msgStr);
+		receivedMessages.add(msg);
+	    }
+	    buf.clear();
+	    try {
+		Thread.sleep(5);
+	    } catch (InterruptedException e) {
+		e.printStackTrace();
+	    }
+	}
+
 	return receivedMessages;
     }
 

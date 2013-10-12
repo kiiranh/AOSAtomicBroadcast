@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import model.Connection;
 import model.Message;
@@ -31,11 +32,11 @@ public class Node {
     /* Holds Info about other nodes */
     private ArrayList<NodeInfo> nodeList;
 
-    /* Holds the messages to be broadcast */
-    private Queue<Message> sendMessageQueue = new LinkedList<Message>();
+    /* Holds the messages to be broadcast - Threadsafe */
+    private Queue<String> sendMessageQueue = new ConcurrentLinkedQueue<String>();
 
-    /* Holds the messages which are delivered to the application */
-    private Queue<Message> deliveredMessageQueue = new LinkedList<Message>();
+    /* Holds the messages which are delivered to the application - Threadsafe */
+    private Queue<Message> deliveredMessageQueue = new ConcurrentLinkedQueue<Message>();
 
     public Node(int nodeId, String configFilePath) {
 	this.myId = nodeId;

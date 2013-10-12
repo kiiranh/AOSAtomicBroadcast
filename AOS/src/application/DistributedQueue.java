@@ -22,7 +22,7 @@ public final class DistributedQueue extends Thread {
     private static Queue<Message> deliveredMessageQueue;
 
     public DistributedQueue(Queue<Character> copy,
-	    Queue<Message> sendMessageQueue,
+	    Queue<String> sendMessageQueue,
 	    Queue<Message> deliveredMessageQueue) {
 	this.localQueue = copy;
     }
