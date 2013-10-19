@@ -8,37 +8,151 @@
 
 package application;
 
+import java.util.ArrayList;
 import java.util.Queue;
-
-import model.Message;
+import java.util.Random;
 
 public final class DistributedApplication extends Thread {
-    private StringBuilder localString;
+    private String localString;
+    private ArrayList<String> actions;
+    private int nodeCount;
+    private boolean amILeader;
+    private ArrayList<String> resultList = new ArrayList<String>();
+    private int pendingResultCount;
 
     /* Holds the messages to be broadcast */
-    private static Queue<Message> sendMessageQueue;
+    private static Queue<String> sendMessageQueue;
 
     /* Holds the messages which are delivered to the application */
-    private static Queue<Message> deliveredMessageQueue;
+    private static Queue<String> deliveredMessageQueue;
 
-    public DistributedApplication(String copy, Queue<String> sendMessageQueue,
-	    Queue<Message> deliveredMessageQueue) {
-	this.localString = new StringBuilder(copy);
+    public DistributedApplication(String original, int nodeCount,
+	    Queue<String> sendMessageQueue,
+	    Queue<String> deliveredMessageQueue, boolean amILeader) {
+	this.localString = original;
+	actions.add("UC"); // Upper caseS
+	actions.add("LC"); // Lower case
+	actions.add("RL"); // Remove the last element
+	actions.add("RI1"); // Replace I/i with 1
+	actions.add("RA4"); // Replace A/a with 4
+	actions.add("REV"); // Reverse the string
+
+	this.nodeCount = nodeCount;
+	this.pendingResultCount = nodeCount - 1;
+	this.amILeader = amILeader;
     }
 
-    public void proposeAction(String msg) {
-	// TODO Broadcast to all nodes.
-    }
+    private void processResults() {
+	// At this point, App processing is done
+	if (amILeader) {
+	    // Leader:
+	    // Wait for result from all nodes
+	    // Verify results and output
+	    while (pendingResultCount > 0) {
+		// Sleep a while
+		try {
+		    Thread.sleep(100);
+		} catch (InterruptedException e) {
+		    e.printStackTrace();
+		}
 
-    public void processAction(String msg) {
-	// TODO Perform the action on local queue
+		while (deliveredMessageQueue.peek() != null) {
+		    String res = deliveredMessageQueue.poll();
+		    if (res.startsWith("=")) {
+			resultList.add(res.substring(1, res.length()));
+			--pendingResultCount;
+		    }
+		}
+	    }
+
+	    // Got all Results. Verify
+	    for (String result : resultList) {
+		if (!result.equals(localString)) {
+		    System.out.println("FAILED :(");
+		    return;
+		}
+	    }
+
+	    System.out.println("YAY! SUCCESS :)");
+
+	} else {
+	    // Worker:
+	    // Send result to Leader Node
+	    sendMessageQueue.add("=" + localString);
+	    System.out.println("RESULT= " + localString);
+	}
     }
 
     @Override
     public void run() {
-	// TODO
-	// Sleep random amount of time to perform my actions
-	// Create send and receive threads ?
-	// TODO Log the actions performed
+	int msgToProcess = 3 * nodeCount;
+	int msgToPropose = 3;
+	Random r = new Random();
+
+	while (msgToProcess > 0) {
+	    if (msgToPropose > 0) {
+		// Propose my action (Selected Randomly from the available set)
+		sendMessageQueue
+			.add(Integer.toString(r.nextInt(actions.size())));
+		--msgToPropose;
+	    }
+
+	    // TODO Make this blocking
+	    // Check if there are any messages to be delivered (a-deliver)
+	    while (deliveredMessageQueue.peek() != null) {
+		// Perform the action
+		String msg = deliveredMessageQueue.poll();
+		if (msg.startsWith("=")) {
+		    // Result msg
+		    resultList.add(msg.substring(1, msg.length()));
+		    --pendingResultCount;
+		} else {
+		    // ACTION MESSAGE
+		    switch (Integer.valueOf(msg)) {
+		    case 0:
+			localString = localString.toUpperCase();
+			break;
+
+		    case 1:
+			localString = localString.toLowerCase();
+			break;
+
+		    case 2:
+			localString = localString.substring(0,
+				localString.length() - 1);
+			break;
+
+		    case 3:
+			localString = localString.replaceAll("[Ii]", "1");
+			break;
+
+		    case 4:
+			localString = localString.replaceAll("[Aa]", "4");
+			break;
+
+		    case 5:
+			localString = new StringBuilder(localString).reverse()
+				.toString();
+
+		    default:
+			break;
+		    }
+
+		    --msgToProcess;
+		}
+
+	    }
+
+	    // Sleep a while
+	    try {
+		Thread.sleep(100);
+	    } catch (InterruptedException e) {
+		e.printStackTrace();
+	    }
+	}
+
+	processResults();
+	// Signal end by sending a final DONE message
+	sendMessageQueue.add("DONE");
     }
 }

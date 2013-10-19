@@ -166,6 +166,27 @@ public class Connection {
 	}
     }
 
+    public void sendResultToLeader(String result) throws Exception{
+	// ASSUMING FIRST NODE IS LEADER
+	SctpChannel channel = nodeChannelMap.get(0);
+	if (channel == null) {
+	    throw new Exception("Channel for node 0 not found!");
+	}
+
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
+
+	cbuf.put(result).flip();
+	encoder.encode(cbuf, buf, true);
+	buf.flip();
+
+	/* send the message on the DATA stream */
+	MessageInfo messageInfo = MessageInfo.createOutgoing(null,
+		Stream.DATA.value);
+	channel.send(buf, messageInfo);
+	System.out.println("Sent Result: " + result);
+    }
+    
     synchronized public void unicast(int nodeId, Message msg) throws Exception {
 	SctpChannel channel = nodeChannelMap.get(nodeId);
 	if (channel == null) {

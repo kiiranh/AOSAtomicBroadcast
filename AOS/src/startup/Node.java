@@ -14,7 +14,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import model.Connection;
-import model.Message;
 import model.NodeInfo;
 import service.Skeens;
 import application.DistributedApplication;
@@ -22,7 +21,7 @@ import application.DistributedApplication;
 public class Node {
     private int myId;
     private int leaderId;
-    private int numberOfNodes;
+    private int nodeCount;
     private String configFilePath;
     private Skeens skeenImpl;
     private Connection connection;
@@ -35,11 +34,11 @@ public class Node {
     private Queue<String> sendMessageQueue = new ConcurrentLinkedQueue<String>();
 
     /* Holds the messages which are delivered to the application - Threadsafe */
-    private Queue<Message> deliveredMessageQueue = new ConcurrentLinkedQueue<Message>();
+    private Queue<String> deliveredMessageQueue = new ConcurrentLinkedQueue<String>();
 
     public Node(int nodeId, String configFilePath) {
 	this.myId = nodeId;
-	this.numberOfNodes = 0;
+	this.nodeCount = 0;
 	this.configFilePath = configFilePath;
 	this.connection = new Connection();
 	this.nodeList = new ArrayList<NodeInfo>();
@@ -57,8 +56,8 @@ public class Node {
 		}
 		// Not a comment. Ignore the comment part
 		line = line.substring(0, line.indexOf("#")).trim();
-		if (0 == numberOfNodes) {
-		    numberOfNodes = Integer.parseInt(line);
+		if (0 == nodeCount) {
+		    nodeCount = Integer.parseInt(line);
 		} else {
 		    String[] parts = line.split(" ");
 		    if (parts.length != 3) {
@@ -80,7 +79,7 @@ public class Node {
 	// Set Leader
 	leaderId = nodeList.get(0).getNodeId();
 
-	System.out.println("Node count= " + numberOfNodes);
+	System.out.println("Node count= " + nodeCount);
 	System.out.println("--- Nodes ---");
 	for (NodeInfo node : nodeList) {
 	    System.out.println(node.toString());
@@ -98,10 +97,12 @@ public class Node {
 
 	// Elect Leader (Node 0 or first node in the list)
 	leaderId = nodeList.get(0).getNodeId();
+	boolean amILeader = false;
 
 	// Send leader info to all (Or assume Node 0)
 	if (leaderId == myId) {
 	    // I'm leader. I will start off the program on all nodes.
+	    amILeader = true;
 	    connection.leaderNotifyStart(leaderId);
 	} else {
 	    // I'm not leader. I will wait for "START" from leader.
@@ -110,26 +111,33 @@ public class Node {
 
 	// Start processing
 	// Start skeens implementation (Own Thread)
-	skeenImpl = new Skeens(connection, myId, numberOfNodes,
-		sendMessageQueue, deliveredMessageQueue);
+	skeenImpl = new Skeens(connection, myId, nodeCount, sendMessageQueue,
+		deliveredMessageQueue);
 	skeenImpl.start();
 
 	// TODO Create Initial Object State and pass to applications
-	String startString = new String("IntialString");
+	String startString = "INTIALSTRING";
 
 	// Start application (own thread)
-	distributedApp = new DistributedApplication(startString,
-		sendMessageQueue, deliveredMessageQueue);
+	distributedApp = new DistributedApplication(startString, nodeCount,
+		sendMessageQueue, deliveredMessageQueue, amILeader);
 	distributedApp.start();
 
 	// When processing done (Each node sends DONE with result to Node 0)
 	// After DONE from ALL NODEs, leader Sends STOP to all processes.
 	// On Receiving STOP, output result and Stop
+	// CHANGED: App wil send result to leader App when done.
+	// Leader App will verify and output result
 
 	// Wait for end of application thread
-	// Wait for end of skeens
+	distributedApp.join();
 
+	// Wait for end of skeens
+	skeenImpl.join();
+
+	// Halt
 	connection.tearDown();
+	System.out.println("\n******* HALTING ******");
     }
 
     public static void main(String[] args) throws Exception {

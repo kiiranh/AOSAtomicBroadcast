@@ -18,7 +18,7 @@ public class Message implements Comparable<Message> {
     }
 
     public static enum Type {
-	NEW, ACK, FINAL;
+	NEW, ACK, FINAL, RESULT
     }
 
     public class MessageId implements Comparable<MessageId> {
