@@ -126,9 +126,11 @@ public class Skeens extends Thread {
 
 	    // Check the HEAD of the queue. While the head node state is READY,
 	    // deliver it
-	    while (pendingQueue.peek().getStatus().equals(Message.State.READY)) {
+	    Message msgToDeliver = null;
+	    while ((msgToDeliver = pendingQueue.peek()) != null
+		    && msgToDeliver.getStatus().equals(Message.State.READY)) {
 		// Head of queue ready. Deliver it
-		Message msgToDeliver = pendingQueue.poll();
+		msgToDeliver = pendingQueue.poll();
 		deliveredMessageQueue.add(msgToDeliver.getPayload());
 		String disp = "Delivered: " + msgToDeliver.toString();
 		System.out.println(disp);
@@ -155,7 +157,11 @@ public class Skeens extends Thread {
 			// Check if this is Result/Done/APP message
 			if (payload.startsWith("=")) {
 			    // This is result message. Send only to leader
-			    connection.sendResultToLeader(payload);
+			    Message msg = new Message(
+				    highestKnownTimestamp.incrementAndGet(),
+				    myId, payload);
+			    msg.setType(Message.Type.RESULT);
+			    connection.sendResultToLeader(msg);
 			} else if (payload.equals("DONE")) {
 			    // Processing done. Set variable to stop service
 			    keepWorking.set(false);

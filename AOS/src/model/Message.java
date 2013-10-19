@@ -58,8 +58,8 @@ public class Message implements Comparable<Message> {
 	    if (getClass() != obj.getClass())
 		return false;
 	    MessageId other = (MessageId) obj;
-	    if (!getOuterType().equals(other.getOuterType()))
-		return false;
+	    // if (!getOuterType().equals(other.getOuterType()))
+	    // return false;
 	    if (originatorId != other.originatorId)
 		return false;
 	    if (originatorTimeStamp != other.originatorTimeStamp)

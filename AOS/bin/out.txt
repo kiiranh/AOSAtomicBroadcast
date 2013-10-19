@@ -1,0 +1,100 @@
+Exception: String index out of range: -1
+Node count= 3
+--- Nodes ---
+Node ID: 0	Hostname: localhost	Port: 53390
+Node ID: 1	Hostname: localhost	Port: 53391
+Node ID: 2	Hostname: localhost	Port: 53392
+MyID: 0
+My Port = 53390
+Awaiting connection from Node Id: 1
+Accepted connection from Node Id: 1
+	Local Channel: /192.168.1.70:53390 Remote Channel: /fe80:0:0:0:6a5d:43ff:fe5f:1e82:46164
+Awaiting connection from Node Id: 2
+Accepted connection from Node Id: 2
+	Local Channel: /192.168.1.70:53390 Remote Channel: /fe80:0:0:0:6a5d:43ff:fe5f:1e82:55802
+Signalled START to Channel: /fe80:0:0:0:6a5d:43ff:fe5f:1e82:46164
+Signalled START to Channel: /fe80:0:0:0:6a5d:43ff:fe5f:1e82:55802
+SERVICE: Starting Send Thread...
+SERVICE: Starting Receive Thread...
+Starting Receiving Messages...
+Checking message on Channel...
+Calling receive on CHannel1
+Starting Send Service...
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Broadcast Message: 1-0:PENDING:NEW:1:5
+Proposed: 1-0:PENDING:ACK:1:5
+Unicast Message: 1-1:PENDING:ACK:2:3
+Unicast Message: 1-2:PENDING:ACK:3:2
+Broadcast Message: 4-0:PENDING:NEW:4:3
+Proposed: 4-0:PENDING:ACK:4:3
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Unicast Message: 3-1:PENDING:ACK:5:0
+Unicast Message: 2-2:PENDING:ACK:6:1
+Broadcast Message: 7-0:PENDING:NEW:7:0
+Proposed: 7-0:PENDING:ACK:7:0
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Broadcast Message: 1-0:READY:FINAL:4:5
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Unicast Message: 6-1:PENDING:ACK:8:4
+Unicast Message: 5-2:PENDING:ACK:9:1
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Delivered: 1-2:READY:FINAL:3:2
+Delivered: 1-0:READY:FINAL:4:5
+Delivered: 1-1:READY:FINAL:4:3
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Broadcast Message: 4-0:READY:FINAL:7:3
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Delivered: 2-2:READY:FINAL:6:1
+Delivered: 3-1:READY:FINAL:7:0
+Delivered: 4-0:READY:FINAL:7:3
+Broadcast Message: 7-0:READY:FINAL:9:0
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+Delivered: 5-2:READY:FINAL:9:1
+Delivered: 6-1:READY:FINAL:9:4
+Delivered: 7-0:READY:FINAL:9:0
+Checking message on Channel...
+Calling receive on CHannel1
+Got message from Channel 1
+Calling receive on CHannel2
+Got message from Channel 2
+YAY! SUCCESS :)
+Stopping Receiving Messages...
+Stopping Send Service...
+Stopping Skeen's service
+
+******* HALTING ******

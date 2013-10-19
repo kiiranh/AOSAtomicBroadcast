@@ -92,6 +92,8 @@ public final class DistributedApplication extends Thread {
 	int msgToPropose = 3;
 	Random r = new Random();
 
+	System.out.println("Initial State: " + localString);
+	
 	while (msgToProcess > 0) {
 	    if (msgToPropose > 0) {
 		// Propose my action (Selected Randomly from the available set)
@@ -109,7 +111,7 @@ public final class DistributedApplication extends Thread {
 		    // Result msg
 		    resultList.add(msg.substring(1, msg.length()));
 		    --pendingResultCount;
-		} else {
+		} else {	    
 		    // ACTION MESSAGE
 		    switch (Integer.valueOf(msg)) {
 		    case 0:
