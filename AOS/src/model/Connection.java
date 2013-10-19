@@ -16,6 +16,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 
 import com.sun.nio.sctp.MessageInfo;
@@ -38,15 +40,17 @@ public class Connection {
 	START, STOP;
     }
 
-    private ArrayList<SctpChannel> channelList;
-    private final ByteBuffer buf = ByteBuffer.allocateDirect(70);
-    private final CharBuffer cbuf = CharBuffer.allocate(70);;
+    private HashMap<Integer, SctpChannel> nodeChannelMap;
+    // private ArrayList<SctpChannel> channelList;
+
+    public static final int BUFFER_SIZE = 70;
     private final Charset charset = Charset.forName("ISO-8859-1");
     private CharsetEncoder encoder;
     private CharsetDecoder decoder;
 
     public Connection() {
-	channelList = new ArrayList<SctpChannel>();
+	// channelList = new ArrayList<SctpChannel>();
+	nodeChannelMap = new LinkedHashMap<Integer, SctpChannel>();
 	encoder = charset.newEncoder();
 	decoder = charset.newDecoder();
     }
@@ -64,7 +68,8 @@ public class Connection {
 	    InetSocketAddress serverAddr = new InetSocketAddress(nodes.get(i)
 		    .getHostname(), nodes.get(i).getPort());
 	    SctpChannel sc = SctpChannel.open(serverAddr, 0, 0);
-	    channelList.add(sc);
+	    // channelList.add(sc);
+	    nodeChannelMap.put(i, sc);
 	    System.out.println("Connected to Node Id: " + i);
 	    System.out.println("\tLocal Channel: "
 		    + sc.getAllLocalAddresses().iterator().next()
@@ -87,7 +92,8 @@ public class Connection {
 	while (nodes.size() != i) {
 	    System.out.println("Awaiting connection from Node Id: " + i);
 	    SctpChannel sc = ssc.accept();
-	    channelList.add(sc);
+	    // channelList.add(sc);
+	    nodeChannelMap.put(i, sc);
 	    System.out.println("Accepted connection from Node Id: " + i);
 	    System.out.println("\tLocal Channel: "
 		    + sc.getAllLocalAddresses().iterator().next()
@@ -104,8 +110,10 @@ public class Connection {
      */
     public void leaderNotifyStart(int leaderId) throws IOException {
 	MessageInfo messageInfo = null;
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
 
-	for (SctpChannel channel : channelList) {
+	for (SctpChannel channel : nodeChannelMap.values()) {
 	    cbuf.clear();
 	    buf.clear();
 	    cbuf.put(leaderId + "," + Action.START).flip();
@@ -130,13 +138,15 @@ public class Connection {
      * @throws IOException
      */
     public void awaitStartFromLeader() throws IOException {
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+
 	MessageInfo messageInfo = null;
 	buf.clear();
 	System.out.println("Awaiting START signal from Leader");
 
 	while (true) {
 	    // TODO Assuming the first node in the config file to be the leader
-	    messageInfo = channelList.get(0).receive(buf, System.out, null);
+	    messageInfo = nodeChannelMap.get(0).receive(buf, System.out, null);
 	    buf.flip();
 	    if (buf.remaining() > 0
 		    && messageInfo.streamNumber() == Stream.CONTROL.value) {
@@ -156,40 +166,64 @@ public class Connection {
 	}
     }
 
+    synchronized public void unicast(int nodeId, Message msg) throws Exception {
+	SctpChannel channel = nodeChannelMap.get(nodeId);
+	if (channel == null) {
+	    throw new Exception("Channel for node " + nodeId + " not found!");
+	}
+
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
+
+	cbuf.put(msg.toString()).flip();
+	encoder.encode(cbuf, buf, true);
+	buf.flip();
+
+	/* send the message on the DATA stream */
+	MessageInfo messageInfo = MessageInfo.createOutgoing(null,
+		Stream.DATA.value);
+	channel.send(buf, messageInfo);
+	System.out.println("Unicast Message: " + msg.toString());
+    }
+
     synchronized public void broadcast(Message msg) throws IOException {
 	// 1. Convert Message to String
 	// 2. Broadcast over All Channels.
-	for (SctpChannel channel : channelList) {
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
+
+	for (SctpChannel channel : nodeChannelMap.values()) {
 	    cbuf.clear();
 	    buf.clear();
 	    cbuf.put(msg.toString()).flip();
 	    encoder.encode(cbuf, buf, true);
 	    buf.flip();
 
-	    /* send the message on the US stream */
+	    /* send the message on the DATA stream */
 	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
 		    Stream.DATA.value);
 	    channel.send(buf, messageInfo);
 	}
 
 	System.out.println("Broadcast Message: " + msg.toString());
-	cbuf.clear();
-	buf.clear();
-
     }
 
     synchronized public LinkedList<Message> receive() throws IOException {
 	LinkedList<Message> receivedMessages = new LinkedList<Message>();
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
 
 	// TODO
 	// 1. Read messages from channel
 	MessageInfo messageInfo = null;
-	buf.clear();
+	// buf.clear();
 	System.out.println("Checking message on Channel...");
 
-	for (SctpChannel channel : channelList) {
+	for (Integer node : nodeChannelMap.keySet()) {
+	    // for (SctpChannel channel : channelList) {
 	    // Get all available messages from each channel
-	    messageInfo = channel.receive(buf, System.out, null);
+	    // messageInfo = channel.receive(buf, System.out, null);
+	    messageInfo = nodeChannelMap.get(node).receive(buf, System.out,
+		    null);
 	    buf.flip();
 	    if (buf.remaining() > 0
 		    && messageInfo.streamNumber() == Stream.DATA.value) {
@@ -211,7 +245,7 @@ public class Connection {
     }
 
     public void tearDown() throws Exception {
-	for (SctpChannel channel : channelList) {
+	for (SctpChannel channel : nodeChannelMap.values()) {
 	    channel.close();
 	}
     }

@@ -12,8 +12,8 @@ import java.util.Queue;
 
 import model.Message;
 
-public final class DistributedQueue extends Thread {
-    private Queue<Character> localQueue;
+public final class DistributedApplication extends Thread {
+    private StringBuilder localString;
 
     /* Holds the messages to be broadcast */
     private static Queue<Message> sendMessageQueue;
@@ -21,10 +21,9 @@ public final class DistributedQueue extends Thread {
     /* Holds the messages which are delivered to the application */
     private static Queue<Message> deliveredMessageQueue;
 
-    public DistributedQueue(Queue<Character> copy,
-	    Queue<String> sendMessageQueue,
+    public DistributedApplication(String copy, Queue<String> sendMessageQueue,
 	    Queue<Message> deliveredMessageQueue) {
-	this.localQueue = copy;
+	this.localString = new StringBuilder(copy);
     }
 
     public void proposeAction(String msg) {

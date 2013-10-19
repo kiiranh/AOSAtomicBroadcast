@@ -21,7 +21,7 @@ public class Message implements Comparable<Message> {
 	NEW, ACK, FINAL;
     }
 
-    private class MessageId implements Comparable<MessageId> {
+    public class MessageId implements Comparable<MessageId> {
 	final private int originatorTimeStamp; // Timestamp when the message was
 					       // originally sent
 	final private int originatorId;
@@ -29,6 +29,14 @@ public class Message implements Comparable<Message> {
 	public MessageId(int ts, int id) {
 	    originatorTimeStamp = ts;
 	    originatorId = id;
+	}
+
+	public int getOriginatorTimeStamp() {
+	    return originatorTimeStamp;
+	}
+
+	public int getOriginatorId() {
+	    return originatorId;
 	}
 
 	@Override
@@ -81,6 +89,7 @@ public class Message implements Comparable<Message> {
 			     // "originatorTimeStamp-originatorId"
     private State status;
     private Type type;
+    private int destinationId = -1;// TODO Use this
 
     /*
      * This will be updated depending on the message type: NEW => original TS
@@ -88,6 +97,7 @@ public class Message implements Comparable<Message> {
      */
     private int timeStamp;
     private String payload;
+    private int replyCount;
 
     public Message(int origTS, int origID, String applicationMessage) {
 	this.msgId = new MessageId(origTS, origID);
@@ -95,15 +105,63 @@ public class Message implements Comparable<Message> {
 	this.type = Type.NEW;
 	this.timeStamp = msgId.originatorTimeStamp;
 	this.payload = applicationMessage;
+	this.replyCount = 0;
+    }
+
+    public int getDestinationId() {
+	return destinationId;
+    }
+
+    public void setDestinationId(int destinationId) {
+	this.destinationId = destinationId;
+    }
+
+    public MessageId getMsgId() {
+	return msgId;
+    }
+
+    public void setMsgId(MessageId msgId) {
+	this.msgId = msgId;
+    }
+
+    public State getStatus() {
+	return status;
+    }
+
+    public void setStatus(State status) {
+	this.status = status;
+    }
+
+    public Type getType() {
+	return type;
+    }
+
+    public void setType(Type type) {
+	this.type = type;
     }
 
     public int getTimeStamp() {
-	return this.timeStamp;
+	return timeStamp;
     }
 
-    public void acknowledge(int newTimestamp) {
-	type = Type.ACK;
-	this.timeStamp = newTimestamp;
+    public void setTimeStamp(int timeStamp) {
+	this.timeStamp = timeStamp;
+    }
+
+    public String getPayload() {
+	return payload;
+    }
+
+    public void setPayload(String payload) {
+	this.payload = payload;
+    }
+
+    public int getReplyCount() {
+	return replyCount;
+    }
+
+    public void setReplyCount(int replyCount) {
+	this.replyCount = replyCount;
     }
 
     public void finalize(int finalTimeStamp) {

@@ -10,7 +10,6 @@ package startup;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -18,7 +17,7 @@ import model.Connection;
 import model.Message;
 import model.NodeInfo;
 import service.Skeens;
-import application.DistributedQueue;
+import application.DistributedApplication;
 
 public class Node {
     private int myId;
@@ -27,7 +26,7 @@ public class Node {
     private String configFilePath;
     private Skeens skeenImpl;
     private Connection connection;
-    private DistributedQueue distributedQueue;
+    private DistributedApplication distributedApp;
 
     /* Holds Info about other nodes */
     private ArrayList<NodeInfo> nodeList;
@@ -111,17 +110,17 @@ public class Node {
 
 	// Start processing
 	// Start skeens implementation (Own Thread)
-	skeenImpl = new Skeens(connection, myId, sendMessageQueue,
-		deliveredMessageQueue);
+	skeenImpl = new Skeens(connection, myId, numberOfNodes,
+		sendMessageQueue, deliveredMessageQueue);
 	skeenImpl.start();
 
 	// TODO Create Initial Object State and pass to applications
-	Queue<Character> queueObject = new LinkedList<Character>();
+	String startString = new String("IntialString");
 
 	// Start application (own thread)
-	distributedQueue = new DistributedQueue(queueObject, sendMessageQueue,
-		deliveredMessageQueue);
-	distributedQueue.start();
+	distributedApp = new DistributedApplication(startString,
+		sendMessageQueue, deliveredMessageQueue);
+	distributedApp.start();
 
 	// When processing done (Each node sends DONE with result to Node 0)
 	// After DONE from ALL NODEs, leader Sends STOP to all processes.
