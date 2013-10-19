@@ -166,7 +166,7 @@ public class Connection {
 	}
     }
 
-    public void sendResultToLeader(String result) throws Exception{
+    public void sendResultToLeader(String result) throws Exception {
 	// ASSUMING FIRST NODE IS LEADER
 	SctpChannel channel = nodeChannelMap.get(0);
 	if (channel == null) {
@@ -186,7 +186,7 @@ public class Connection {
 	channel.send(buf, messageInfo);
 	System.out.println("Sent Result: " + result);
     }
-    
+
     synchronized public void unicast(int nodeId, Message msg) throws Exception {
 	SctpChannel channel = nodeChannelMap.get(nodeId);
 	if (channel == null) {
@@ -233,7 +233,6 @@ public class Connection {
 	LinkedList<Message> receivedMessages = new LinkedList<Message>();
 	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
 
-	// TODO
 	// 1. Read messages from channel
 	MessageInfo messageInfo = null;
 	// buf.clear();

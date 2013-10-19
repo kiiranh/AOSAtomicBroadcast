@@ -16,7 +16,7 @@ public final class DistributedApplication extends Thread {
     private String localString;
     private ArrayList<String> actions;
     private int nodeCount;
-    private boolean amILeader;
+    private static boolean amILeader;
     private ArrayList<String> resultList = new ArrayList<String>();
     private int pendingResultCount;
 
@@ -30,7 +30,8 @@ public final class DistributedApplication extends Thread {
 	    Queue<String> sendMessageQueue,
 	    Queue<String> deliveredMessageQueue, boolean amILeader) {
 	this.localString = original;
-	actions.add("UC"); // Upper caseS
+	actions = new ArrayList<String>();
+	actions.add("UC"); // Upper case
 	actions.add("LC"); // Lower case
 	actions.add("RL"); // Remove the last element
 	actions.add("RI1"); // Replace I/i with 1
@@ -39,7 +40,9 @@ public final class DistributedApplication extends Thread {
 
 	this.nodeCount = nodeCount;
 	this.pendingResultCount = nodeCount - 1;
-	this.amILeader = amILeader;
+	DistributedApplication.amILeader = amILeader;
+	DistributedApplication.sendMessageQueue = sendMessageQueue;
+	DistributedApplication.deliveredMessageQueue = deliveredMessageQueue;
     }
 
     private void processResults() {
