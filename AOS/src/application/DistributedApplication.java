@@ -19,6 +19,7 @@ public final class DistributedApplication extends Thread {
     private static boolean amILeader;
     private ArrayList<String> resultList = new ArrayList<String>();
     private int pendingResultCount;
+    private static final int MY_COMPUTATION_COUNT = 7;
 
     /* Holds the messages to be broadcast */
     private static Queue<String> sendMessageQueue;
@@ -37,6 +38,7 @@ public final class DistributedApplication extends Thread {
 	actions.add("RI1"); // Replace I/i with 1
 	actions.add("RA4"); // Replace A/a with 4
 	actions.add("REV"); // Reverse the string
+	actions.add("APPZ"); // Append Z
 
 	this.nodeCount = nodeCount;
 	this.pendingResultCount = nodeCount - 1;
@@ -47,6 +49,7 @@ public final class DistributedApplication extends Thread {
 
     private void processResults() {
 	// At this point, App processing is done
+	System.out.println("\nMY FINAL OBJECT: " + localString + "\n");
 	if (amILeader) {
 	    // Leader:
 	    // Wait for result from all nodes
@@ -71,29 +74,31 @@ public final class DistributedApplication extends Thread {
 	    // Got all Results. Verify
 	    for (String result : resultList) {
 		if (!result.equals(localString)) {
-		    System.out.println("FAILED :(");
+		    System.out
+			    .println("\n <<< [VERIFICATION] DISTRIBUTED COMPUTATION INCONSISTENT => FAILED :) >>>\n");
 		    return;
 		}
 	    }
 
-	    System.out.println("YAY! SUCCESS :)");
+	    System.out
+		    .println("\n <<< [VERIFICATION] DISTRIBUTED COMPUTATION CONSISTENT => SUCCESS :) >>>\n");
 
 	} else {
 	    // Worker:
 	    // Send result to Leader Node
 	    sendMessageQueue.add("=" + localString);
-	    System.out.println("RESULT= " + localString);
+	    System.out.println("[APPLICATION] SENT RESULT TO LEADER");
 	}
     }
 
     @Override
     public void run() {
-	int msgToProcess = 3 * nodeCount;
-	int msgToPropose = 3;
+	int msgToProcess = MY_COMPUTATION_COUNT * nodeCount;
+	int msgToPropose = MY_COMPUTATION_COUNT;
 	Random r = new Random();
 
-	System.out.println("Initial State: " + localString);
-	
+	System.out.println("\nINITIAL OBJECT: " + localString + "\n");
+
 	while (msgToProcess > 0) {
 	    if (msgToPropose > 0) {
 		// Propose my action (Selected Randomly from the available set)
@@ -111,7 +116,7 @@ public final class DistributedApplication extends Thread {
 		    // Result msg
 		    resultList.add(msg.substring(1, msg.length()));
 		    --pendingResultCount;
-		} else {	    
+		} else {
 		    // ACTION MESSAGE
 		    switch (Integer.valueOf(msg)) {
 		    case 0:
@@ -123,8 +128,10 @@ public final class DistributedApplication extends Thread {
 			break;
 
 		    case 2:
-			localString = localString.substring(0,
-				localString.length() - 1);
+			if (localString.length() > 0) {
+			    localString = localString.substring(0,
+				    localString.length() - 1);
+			}
 			break;
 
 		    case 3:
@@ -138,6 +145,9 @@ public final class DistributedApplication extends Thread {
 		    case 5:
 			localString = new StringBuilder(localString).reverse()
 				.toString();
+
+		    case 6:
+			localString = localString + "Z";
 
 		    default:
 			break;

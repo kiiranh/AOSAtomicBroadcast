@@ -22,14 +22,13 @@ public class NodeInfo {
     public int getNodeId() {
 	return this.nodeId;
     }
-    
 
     public String getHostname() {
-        return hostname;
+	return hostname;
     }
 
     public int getPort() {
-        return port;
+	return port;
     }
 
     @Override

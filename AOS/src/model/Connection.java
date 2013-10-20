@@ -62,7 +62,8 @@ public class Connection {
 	System.out.println("MyID: " + myId);
 
 	// Connect to nodes with lower IDs
-	// FIXME Assume configuration file has nodes in ascending order of IDs
+	// *** ASSUMPTION *** configuration file has nodes in ascending order of
+	// IDs
 	while (nodes.get(i).getNodeId() != myId) {
 	    // Connect to this node
 	    System.out.println("Trying to connect to Node Id: " + i);
@@ -147,7 +148,8 @@ public class Connection {
 	System.out.println("Awaiting START signal from Leader");
 
 	while (true) {
-	    // TODO Assuming the first node in the config file to be the leader
+	    // *** ASSUMPTION *** Assuming the first node in the config file to
+	    // be the leader
 	    messageInfo = nodeChannelMap.get(0).receive(buf, System.out, null);
 	    buf.flip();
 	    if (buf.remaining() > 0
@@ -188,7 +190,7 @@ public class Connection {
 	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
 		    Stream.DATA.value);
 	    channel.send(buf, messageInfo);
-	    //System.out.println("Sent Result: " + resultMsg.toString());
+	    // System.out.println("Sent Result: " + resultMsg.toString());
 
 	}
     }
@@ -213,7 +215,7 @@ public class Connection {
 	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
 		    Stream.DATA.value);
 	    channel.send(buf, messageInfo);
-	    //System.out.println("Unicast Message: " + msg.toString());
+	    // System.out.println("Unicast Message: " + msg.toString());
 	}
     }
 
@@ -237,7 +239,7 @@ public class Connection {
 		channel.send(buf, messageInfo);
 	    }
 
-	    //System.out.println("Broadcast Message: " + msg.toString());
+	    // System.out.println("Broadcast Message: " + msg.toString());
 	}
     }
 
@@ -249,15 +251,15 @@ public class Connection {
 	    // 1. Read messages from channel
 	    MessageInfo messageInfo = null;
 	    // buf.clear();
-	    //System.out.println("Checking message on Channel...");
+	    // System.out.println("Checking message on Channel...");
 
 	    for (Integer node : nodeChannelMap.keySet()) {
 		// for (SctpChannel channel : channelList) {
 		// Get all available messages from each channel
 		// messageInfo = channel.receive(buf, System.out, null);
-		//System.out.println("Calling receive on CHannel" + node);
+		// System.out.println("Calling receive on CHannel" + node);
 		messageInfo = nodeChannelMap.get(node).receive(buf, null, null);
-		//System.out.println("Got message from Channel " + node);
+		// System.out.println("Got message from Channel " + node);
 		buf.flip();
 		if (buf.remaining() > 0
 			&& messageInfo.streamNumber() == Stream.DATA.value) {

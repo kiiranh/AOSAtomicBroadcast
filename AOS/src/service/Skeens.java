@@ -7,6 +7,8 @@
  */
 package service;
 
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
@@ -24,12 +26,11 @@ public class Skeens extends Thread {
     private static Connection connection;
     private static int myId;
     private static int nodeCount;
-    private static AtomicInteger highestKnownTimestamp = new AtomicInteger(0); // TODO
-									       // Handle
-									       // concurrency
+    private static AtomicInteger highestKnownTimestamp = new AtomicInteger(0);
     private static PriorityQueue<Message> pendingQueue = new PriorityQueue<Message>(); // Message
 										       // is
 										       // Comparable
+    private static String logFile;
 
     private static enum Operation {
 	ENQUEUE, UPDATE
@@ -45,12 +46,33 @@ public class Skeens extends Thread {
     private static AtomicBoolean keepWorking = new AtomicBoolean(true);
 
     public Skeens(Connection connection, int myId, int nodeCount,
-	    Queue<String> sendMessageQueue, Queue<String> deliveredMessageQueue) {
+	    Queue<String> sendMessageQueue,
+	    Queue<String> deliveredMessageQueue, String deliveryLog) {
 	Skeens.connection = connection;
 	Skeens.myId = myId;
 	Skeens.nodeCount = nodeCount;
 	Skeens.sendMessageQueue = sendMessageQueue;
 	Skeens.deliveredMessageQueue = deliveredMessageQueue;
+	Skeens.logFile = deliveryLog;
+    }
+
+    public void writeLog(String s) {
+	PrintWriter pw = null;
+	try {
+	    pw = new PrintWriter(new FileWriter(Skeens.logFile, true));
+	    pw.append(s);
+	} catch (Exception e) {
+	    throw new RuntimeException(e);
+	} finally {
+	    if (pw != null) {
+		try {
+		    pw.close();
+		} catch (Exception e) {
+		    // Ignore issues during closing
+		}
+	    }
+	}
+
     }
 
     private synchronized Message processPendingQueue(Operation op,
@@ -134,6 +156,7 @@ public class Skeens extends Thread {
 		deliveredMessageQueue.add(msgToDeliver.getPayload());
 		String disp = "Delivered: " + msgToDeliver.toString();
 		System.out.println(disp);
+		writeLog(msgToDeliver.toString());
 	    }
 	    break;
 

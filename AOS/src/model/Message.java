@@ -89,7 +89,6 @@ public class Message implements Comparable<Message> {
 			     // "originatorTimeStamp-originatorId"
     private State status;
     private Type type;
-    private int destinationId = -1;// TODO Use this
 
     /*
      * This will be updated depending on the message type: NEW => original TS
@@ -106,14 +105,6 @@ public class Message implements Comparable<Message> {
 	this.timeStamp = msgId.originatorTimeStamp;
 	this.payload = applicationMessage;
 	this.replyCount = 0;
-    }
-
-    public int getDestinationId() {
-	return destinationId;
-    }
-
-    public void setDestinationId(int destinationId) {
-	this.destinationId = destinationId;
     }
 
     public MessageId getMsgId() {

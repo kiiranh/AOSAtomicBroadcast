@@ -8,7 +8,13 @@
 package startup;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -26,6 +32,8 @@ public class Node {
     private Skeens skeenImpl;
     private Connection connection;
     private DistributedApplication distributedApp;
+    private String deliveryLogDir;
+    private String deliveryLog;
 
     /* Holds Info about other nodes */
     private ArrayList<NodeInfo> nodeList;
@@ -36,12 +44,27 @@ public class Node {
     /* Holds the messages which are delivered to the application - Threadsafe */
     private Queue<String> deliveredMessageQueue = new ConcurrentLinkedQueue<String>();
 
-    public Node(int nodeId, String configFilePath) {
+    public Node(int nodeId, String configFilePath, String logDir) {
 	this.myId = nodeId;
 	this.nodeCount = 0;
 	this.configFilePath = configFilePath;
 	this.connection = new Connection();
 	this.nodeList = new ArrayList<NodeInfo>();
+	this.deliveryLogDir = logDir;
+	this.deliveryLog = logDir + "node" + myId + ".log";
+    }
+
+    private void cleanUpLogs(String logDir) {
+	Path path = null;
+	try {
+
+	    for (NodeInfo node : nodeList) {
+		path = FileSystems.getDefault().getPath(logDir,
+			"/node" + node.getNodeId() + ".log");
+		Files.deleteIfExists(path);
+	    }
+	} catch (IOException e) {
+	}
     }
 
     private void readConfigFile() throws Exception {
@@ -71,7 +94,7 @@ public class Node {
 		}
 	    }
 	} catch (Exception e) {
-	    System.out.println("Exception: " + e.getMessage());
+	    // System.out.println("Exception: " + e.getMessage());
 	} finally {
 	    br.close();
 	}
@@ -86,10 +109,71 @@ public class Node {
 	}
     }
 
+    private String getMD5Checksum(String absoluteFilePath) throws Exception {
+	MessageDigest md = MessageDigest.getInstance("MD5");
+	FileInputStream fis = new FileInputStream(absoluteFilePath);
+
+	byte[] dataBytes = new byte[1024];
+
+	int nread = 0;
+	while ((nread = fis.read(dataBytes)) != -1) {
+	    md.update(dataBytes, 0, nread);
+	}
+
+	fis.close();
+	byte[] mdbytes = md.digest();
+
+	// convert the byte to hex format method 1
+	StringBuffer sb = new StringBuffer();
+	for (int i = 0; i < mdbytes.length; i++) {
+	    sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16)
+		    .substring(1));
+	}
+
+	// System.out.println("Digest(in hex format):: " + sb.toString());
+	return sb.toString();
+    }
+
+    private void verifyMessageOrder() throws Exception {
+	// Performed by leader
+	// Compare the log files to my log file
+	String leaderChecksum = getMD5Checksum(deliveryLog);
+	System.out.println("[VERIFICATION] Leader Delivery file Checksum: "
+		+ leaderChecksum);
+
+	String otherChecksum = "Different";
+	boolean pass = true;
+
+	for (NodeInfo node : nodeList) {
+	    if (node.getNodeId() != myId) {
+		// Compute others checksum and compare.
+		otherChecksum = getMD5Checksum(deliveryLogDir + "node"
+			+ node.getNodeId() + ".log");
+		System.out.println("[VERIFICATION] Node " + node.getNodeId()
+			+ " Delivery file Checksum: " + otherChecksum);
+		if (!leaderChecksum.equals(otherChecksum)) {
+		    System.out
+			    .println("\n <<< [VERIFICATION] FAILED: Checksum for Node "
+				    + node.getNodeId()
+				    + " differs from that of Leader. >>>\n");
+		    pass = false;
+		}
+	    }
+	}
+
+	if (pass) {
+	    System.out
+		    .println("\n <<< [VERIFICATION] MESSAGE DELIVERY LOG CONSISTENT: SUCCESS :) >>> \n");
+	}
+    }
+
     public void start() throws Exception {
-	// TODO
 	// Read Config File
 	readConfigFile();
+
+	// Clear previous log files
+	cleanUpLogs(deliveryLogDir);
+	System.out.println("Deleted previous log files");
 
 	// Setup sctp connections
 	connection.setUp(nodeList, myId);
@@ -112,10 +196,10 @@ public class Node {
 	// Start processing
 	// Start skeens implementation (Own Thread)
 	skeenImpl = new Skeens(connection, myId, nodeCount, sendMessageQueue,
-		deliveredMessageQueue);
+		deliveredMessageQueue, deliveryLog);
 	skeenImpl.start();
 
-	// TODO Create Initial Object State and pass to applications
+	// Create Initial Object State and pass to applications
 	String startString = "INTIALSTRING";
 
 	// Start application (own thread)
@@ -137,18 +221,33 @@ public class Node {
 
 	// Halt
 	connection.tearDown();
+
+	// VERIFY THAT THE MESSAGES WERE TOTALLY ORDERED BY READING LOG FILES
+	if (leaderId == myId) {
+	    System.out
+		    .println("\n[LEADER NODE] Verifying message ordering on all nodes...");
+	    verifyMessageOrder();
+	}
+
 	System.out.println("\n******* HALTING ******");
     }
 
     public static void main(String[] args) throws Exception {
 	// Get my Node ID and config file path from CLI
-	if (args.length < 2) {
+	if (args.length < 3) {
 	    throw new Exception(
-		    "Invalid command: Please specify node id and configuration file path. "
-			    + "\n\t Command: java Node <nodeId> <configFilePath>\n\t "
-			    + "Eg: java Node 0 \"/home/kiiranh/workspace/AOS/src/config.txt\"");
+		    "Invalid command: Please specify node id, absolute configuration file path & absolute log directory path"
+			    + "\n\t Command: java Node <nodeId> <absolute configFilePath> <absolute log dir path>\n\t "
+			    + "Eg: java Node 0 \"/home/kiiranh/workspace/AOS/src/config.txt\" \"/home/kiiranh/workspace/AOS/bin/\"");
 	}
 
-	new Node(Integer.parseInt(args[0]), args[1]).start();
+	String logDir = args[2];
+	if (!logDir.endsWith("/")) {
+	    logDir = logDir + "/";
+	}
+	// System.out.println(logDir);
+	// System.out.println(logFile);
+
+	new Node(Integer.parseInt(args[0]), args[1], logDir).start();
     }
 }
