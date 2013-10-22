@@ -33,6 +33,8 @@
 6. This will start the program on the system. 
 7. The program has to be started on all the nodes mentioned in the config file. Only when all nodes are up
    the nodes will make connections and start execution.
+8. *** IMP *** Even if the more nodes' info is given in config file, only "node count" number of nodes will be
+   used (where "node count" is the first non-comment line in the config file).
 
 **********
 * RESULT *
@@ -50,7 +52,7 @@
 1. At the beginning, a Leader node is elected (the first in the list in config file)
 2. Leader broadcasts a START signal to all nodes to start computation.
 3. When the application on all nodes are done processing, they will send the Result to Leader Node Application.
-4. The application on the leader node will verify that the results of all nodes are consisten (same).
+4. The application on the leader node will verify that the results of all nodes are consistent (same).
 5. When application work is done, it will stop.
 6. Leader will broadcast STOP signal to all nodes, on receiving which the Service and the node itself will stop.
 7. The Leader Node will stop is application and service and then perform verification of the log files.

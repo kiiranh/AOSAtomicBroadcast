@@ -12,7 +12,8 @@ public class Message implements Comparable<Message> {
 
     public static final char MESSAGE_FIELDS_SEPARATOR = ':';
     public static final char MESSAGE_ID_SEPARATOR = '-';
-
+    public static final String DONE = "DONE";
+    
     public static enum State {
 	PENDING, READY;
     }

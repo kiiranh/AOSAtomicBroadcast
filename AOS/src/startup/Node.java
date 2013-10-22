@@ -202,9 +202,10 @@ public class Node {
 	// System.out.println("Deleted previous log files");
 
 	// Setup sctp connections
+	System.out.println("\n <<< CONNECTION SETUP STARTED >>>");
 	connection.setUp(nodeList, myId);
 	System.out.println("\n <<< CONNECTION SETUP DONE >>>");
-	Thread.sleep(100);
+	Thread.sleep(1000);
 
 	// Elect Leader (Node 0 or first node in the list)
 	leaderId = nodeList.get(0).getNodeId();

@@ -82,7 +82,7 @@ public class Connection {
 
 	// i points to myId
 	int myPort = nodes.get(i).getPort();
-	//System.out.println("[NODE] My Port = " + myPort);
+	// System.out.println("[NODE] My Port = " + myPort);
 	++i;
 
 	SctpServerChannel ssc = SctpServerChannel.open();
@@ -92,11 +92,13 @@ public class Connection {
 	// higher IDs remain.
 	// Accept connections from nodes with higher IDs.
 	while (nodes.size() != i) {
-	    //System.out.println("[NODE] Awaiting connection from Node Id: " + i);
+	    // System.out.println("[NODE] Awaiting connection from Node Id: " +
+	    // i);
 	    SctpChannel sc = ssc.accept();
 	    // channelList.add(sc);
 	    nodeChannelMap.put(i, sc);
-	    // System.out.println("[NODE] Accepted connection from Node Id: " + i);
+	    // System.out.println("[NODE] Accepted connection from Node Id: " +
+	    // i);
 	    // System.out.println("\tLocal Channel: "
 	    // + sc.getAllLocalAddresses().iterator().next()
 	    // + " Remote Channel: "
@@ -126,7 +128,8 @@ public class Connection {
 	    messageInfo = MessageInfo
 		    .createOutgoing(null, Stream.CONTROL.value);
 	    channel.send(buf, messageInfo);
-	    //System.out.println("[LEADER NODE] Signalled START to Channel: " + channel.getRemoteAddresses().iterator().next());
+	    // System.out.println("[LEADER NODE] Signalled START to Channel: " +
+	    // channel.getRemoteAddresses().iterator().next());
 	}
 
 	cbuf.clear();
@@ -143,7 +146,7 @@ public class Connection {
 
 	MessageInfo messageInfo = null;
 	buf.clear();
-	System.out.println("[NODE] Awaiting START signal from Leader");
+	System.out.println("\n <<< Awaiting START signal from Leader >>>");
 
 	while (true) {
 	    // *** ASSUMPTION *** Assuming the first node in the config file to
@@ -155,8 +158,7 @@ public class Connection {
 		String msg = decoder.decode(buf).toString();
 		if (msg.contains("" + Action.START)) {
 		    System.out
-			    .println("[NODE] Received Signal START from Leader: "
-				    + msg);
+			    .println("\n <<< Received START Signal from Leader >>>");
 		    break;
 		}
 	    }

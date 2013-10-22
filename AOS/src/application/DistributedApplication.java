@@ -11,6 +11,7 @@ package application;
 import java.util.ArrayList;
 import java.util.Random;
 
+import model.Message;
 import service.Skeens;
 
 public final class DistributedApplication extends Thread {
@@ -27,15 +28,15 @@ public final class DistributedApplication extends Thread {
 	    boolean amILeader, Skeens service) {
 	this.localString = original;
 	actions = new ArrayList<String>();
-	actions.add("UC"); // Upper case
-	actions.add("LC"); // Lower case
-	actions.add("RL"); // Remove the last element
-	actions.add("APPZ"); // Append Z to tail
-	actions.add("RMZ"); // Remove Z from tail
-	actions.add("APP*"); // Append *
-	actions.add("RI1"); // Replace I/i with 1
-	actions.add("RA4"); // Replace A/a with 4
-	actions.add("REV"); // Reverse the string
+	actions.add("Upper Case"); // Upper case
+	actions.add("Lower Case"); // Lower case
+	actions.add("Remove Last Element"); // Remove the last element
+	actions.add("Append \"Z\""); // Append Z to tail
+	actions.add("Remove \"Z\" from the end"); // Remove Z from tail
+	actions.add("Append \"*\""); // Append *
+	actions.add("Replace [Ii] with 1"); // Replace I/i with 1
+	actions.add("Replace [Aa] with 4"); // Replace A/a with 4
+	actions.add("Reverse"); // Reverse the string
 
 	this.nodeCount = nodeCount;
 	this.pendingResultCount = nodeCount - 1;
@@ -98,15 +99,15 @@ public final class DistributedApplication extends Thread {
 	    while (msgToPropose > 0) {
 		// Sleep random time
 		try {
-		    Thread.sleep(200);
+		    Thread.sleep(1000);
 		} catch (Exception e) {
-		    ;
-		    ;
+
 		}
 
 		// Propose my action (Selected Randomly from the available set)
-		service.aBroadCast(Integer.toString(new Random()
-			.nextInt(actions.size())));
+		int act = new Random().nextInt(actions.size());
+		System.out.println("\nPROPOSE ACTION: " + actions.get(act));
+		service.aBroadCast(Integer.toString(act));
 		--msgToPropose;
 	    }
 	}
@@ -119,7 +120,7 @@ public final class DistributedApplication extends Thread {
 
 	    while (msgToProcess > 0) {
 		try {
-		    Thread.sleep(100);
+		    Thread.sleep(new Random().nextInt(1000));
 		} catch (Exception e) {
 		}
 
@@ -132,6 +133,9 @@ public final class DistributedApplication extends Thread {
 			--pendingResultCount;
 		    } else {
 			// ACTION MESSAGE
+			System.out.println("\n[DELIVER] ACTION: "
+				+ actions.get(Integer.valueOf(msg)));
+			System.out.print("BEFORE: " + localString);
 			switch (Integer.valueOf(msg)) {
 			case 0:
 			    localString = localString.toUpperCase();
@@ -180,9 +184,9 @@ public final class DistributedApplication extends Thread {
 			    break;
 			}
 
+			System.out.println("\tAFTER: " + localString);
 			--msgToProcess;
 		    }
-
 		}
 	    }
 	}
@@ -211,7 +215,7 @@ public final class DistributedApplication extends Thread {
 	}
 
 	processResults();
-	service.aBroadCast("DONE");
+	service.aBroadCast(Message.DONE);
 	System.out.println("\n <<< APPLICATION STOPPED >>>");
     }
 }

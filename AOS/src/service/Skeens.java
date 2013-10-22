@@ -182,9 +182,9 @@ public class Skeens extends Thread {
 		// Head of queue ready. Deliver it
 		msgToDeliver = pendingQueue.poll();
 		deliveredMessageQueue.add(msgToDeliver.getPayload());
-		String disp = "[SERVICE] DELIVERED MESSAGE: "
-			+ msgToDeliver.toString();
-		System.out.println(disp);
+		// String disp = "[SERVICE] DELIVERED MESSAGE: " +
+		// msgToDeliver.toString();
+		// System.out.println(disp);
 		writeLog(msgToDeliver.toString());
 	    }
 	    break;
@@ -224,7 +224,7 @@ public class Skeens extends Thread {
 				msg.setType(Message.Type.RESULT);
 				connection.sendToLeader(msg);
 				// connection.broadcast(msg);
-			    } else if (payload.equals("DONE")) {
+			    } else if (payload.equals(Message.DONE)) {
 				// This will be sent only by leader's
 				// application. Stop service
 				keepWorking.set(false);
@@ -234,8 +234,8 @@ public class Skeens extends Thread {
 					payload);
 				// Add to my queue
 				processPendingQueue(Operation.ENQUEUE, msg);
-				System.out.println("[APPLICATION] Proposed: "
-					+ msg.toString());
+				// System.out.println("[APPLICATION] Proposed: "
+				// + msg.toString());
 				connection.broadcast(msg);
 			    }
 			} catch (Exception e) {
@@ -252,7 +252,7 @@ public class Skeens extends Thread {
 
 		// Sleep for a moment
 		try {
-		    Thread.sleep(100);
+		    Thread.sleep(500);
 		} catch (InterruptedException e) {
 		    e.printStackTrace();
 		}
@@ -336,7 +336,7 @@ public class Skeens extends Thread {
 
 		// Sleep for a moment
 		try {
-		    Thread.sleep(100);
+		    Thread.sleep(500);
 		} catch (InterruptedException e) {
 		    e.printStackTrace();
 		}
