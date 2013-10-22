@@ -16,8 +16,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import model.Connection;
 import model.NodeInfo;
@@ -37,12 +35,6 @@ public class Node {
 
     /* Holds Info about other nodes */
     private ArrayList<NodeInfo> nodeList;
-
-    /* Holds the messages to be broadcast - Threadsafe */
-    private Queue<String> sendMessageQueue = new ConcurrentLinkedQueue<String>();
-
-    /* Holds the messages which are delivered to the application - Threadsafe */
-    private Queue<String> deliveredMessageQueue = new ConcurrentLinkedQueue<String>();
 
     public Node(int nodeId, String configFilePath, String logDir) {
 	this.myId = nodeId;
@@ -65,6 +57,8 @@ public class Node {
 	    }
 	} catch (IOException e) {
 	}
+
+	System.out.println("\n[NODE] Cleaned Up Previous logs.\n");
     }
 
     private void readConfigFile() throws Exception {
@@ -72,27 +66,55 @@ public class Node {
 		this.configFilePath));
 	try {
 	    String line;
-	    while ((line = br.readLine().trim()) != null) {
+	    boolean readNodeCount = false;
+	    while (readNodeCount == false
+		    && (line = br.readLine().trim()) != null) {
 		// Check if this is a comment
 		if (line.startsWith("#")) {
 		    continue;
 		}
-		// Not a comment. Ignore the comment part
-		line = line.substring(0, line.indexOf("#")).trim();
-		if (0 == nodeCount) {
-		    nodeCount = Integer.parseInt(line);
-		} else {
-		    String[] parts = line.split(" ");
-		    if (parts.length != 3) {
-			throw new Exception(
-				"Invalid Configuration file: Format for specifying node.");
-		    }
 
-		    NodeInfo node = new NodeInfo(Integer.parseInt(parts[0]),
-			    parts[1], Integer.parseInt(parts[2]));
-		    nodeList.add(node);
+		line = line.trim();
+		// Not a comment. Ignore the comment part
+		if (line.indexOf("#") > 0) {
+		    // Has a comment part. Prune comment part
+		    line = line.substring(0, line.indexOf("#")).trim();
 		}
+
+		// First line will be node count.
+		nodeCount = Integer.parseInt(line);
+		readNodeCount = true;
 	    }
+
+	    // Read Info about "nodeCount Nodes"
+	    int nodeInfoRead = 0;
+	    while (nodeInfoRead < nodeCount
+		    && (line = br.readLine().trim()) != null) {
+
+		// Check if this is a comment
+		if (line.startsWith("#")) {
+		    continue;
+		}
+
+		line = line.trim();
+		// Not a comment. Ignore the comment part
+		if (line.indexOf("#") > 0) {
+		    // Has a comment part. Prune comment part
+		    line = line.substring(0, line.indexOf("#")).trim();
+		}
+
+		String[] parts = line.split(" ");
+		if (parts.length != 3) {
+		    throw new Exception(
+			    "Invalid Configuration file: Format for specifying node.");
+		}
+
+		NodeInfo node = new NodeInfo(Integer.parseInt(parts[0]),
+			parts[1], Integer.parseInt(parts[2]));
+		nodeList.add(node);
+		++nodeInfoRead;
+	    }
+
 	} catch (Exception e) {
 	    // System.out.println("Exception: " + e.getMessage());
 	} finally {
@@ -102,11 +124,15 @@ public class Node {
 	// Set Leader
 	leaderId = nodeList.get(0).getNodeId();
 
+	// Just in case nodeCount wasn't updated in the config file
+	nodeCount = nodeList.size();
 	System.out.println("Node count= " + nodeCount);
 	System.out.println("--- Nodes ---");
 	for (NodeInfo node : nodeList) {
 	    System.out.println(node.toString());
 	}
+
+	System.out.println("\n[NODE] CONFIGURATION FILE READ\n");
     }
 
     private String getMD5Checksum(String absoluteFilePath) throws Exception {
@@ -173,15 +199,17 @@ public class Node {
 
 	// Clear previous log files
 	cleanUpLogs(deliveryLogDir);
-	System.out.println("Deleted previous log files");
+	// System.out.println("Deleted previous log files");
 
 	// Setup sctp connections
 	connection.setUp(nodeList, myId);
-	Thread.sleep(10);
+	Thread.sleep(100);
 
 	// Elect Leader (Node 0 or first node in the list)
 	leaderId = nodeList.get(0).getNodeId();
 	boolean amILeader = false;
+
+	System.out.println("[NODE] LEADER NODE ID: " + leaderId);
 
 	// Send leader info to all (Or assume Node 0)
 	if (leaderId == myId) {
@@ -195,8 +223,7 @@ public class Node {
 
 	// Start processing
 	// Start skeens implementation (Own Thread)
-	skeenImpl = new Skeens(connection, myId, nodeCount, sendMessageQueue,
-		deliveredMessageQueue, deliveryLog);
+	skeenImpl = new Skeens(connection, myId, nodeCount, deliveryLog);
 	skeenImpl.start();
 
 	// Create Initial Object State and pass to applications
@@ -204,7 +231,7 @@ public class Node {
 
 	// Start application (own thread)
 	distributedApp = new DistributedApplication(startString, nodeCount,
-		sendMessageQueue, deliveredMessageQueue, amILeader);
+		amILeader, skeenImpl);
 	distributedApp.start();
 
 	// When processing done (Each node sends DONE with result to Node 0)
@@ -221,9 +248,11 @@ public class Node {
 
 	// Halt
 	connection.tearDown();
+	System.out.println("\n[NODE] TERMINATED CONNECTIONS\n");
 
 	// VERIFY THAT THE MESSAGES WERE TOTALLY ORDERED BY READING LOG FILES
 	if (leaderId == myId) {
+	    Thread.sleep(2000);
 	    System.out
 		    .println("\n[LEADER NODE] Verifying message ordering on all nodes...");
 	    verifyMessageOrder();

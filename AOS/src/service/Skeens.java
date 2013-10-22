@@ -9,12 +9,14 @@ package service;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import model.Connection;
 import model.Message;
@@ -26,7 +28,7 @@ public class Skeens extends Thread {
     private static Connection connection;
     private static int myId;
     private static int nodeCount;
-    private static AtomicInteger highestKnownTimestamp = new AtomicInteger(0);
+    private static int logicalClock = 0;
     private static PriorityQueue<Message> pendingQueue = new PriorityQueue<Message>(); // Message
 										       // is
 										       // Comparable
@@ -35,6 +37,10 @@ public class Skeens extends Thread {
     private static enum Operation {
 	ENQUEUE, UPDATE
     }
+
+    private final Lock resourcesLock = new ReentrantLock(true);
+    private final Lock applicationQueueLock = new ReentrantLock(true);
+    // private final Condition notEmpty = applicationQueueLock.newCondition();
 
     /* Holds the Actual Message Payload to be broadcast */
     private static Queue<String> sendMessageQueue;
@@ -46,21 +52,20 @@ public class Skeens extends Thread {
     private static AtomicBoolean keepWorking = new AtomicBoolean(true);
 
     public Skeens(Connection connection, int myId, int nodeCount,
-	    Queue<String> sendMessageQueue,
-	    Queue<String> deliveredMessageQueue, String deliveryLog) {
+	    String deliveryLog) {
 	Skeens.connection = connection;
 	Skeens.myId = myId;
 	Skeens.nodeCount = nodeCount;
-	Skeens.sendMessageQueue = sendMessageQueue;
-	Skeens.deliveredMessageQueue = deliveredMessageQueue;
 	Skeens.logFile = deliveryLog;
+	Skeens.sendMessageQueue = new LinkedList<String>();
+	Skeens.deliveredMessageQueue = new LinkedList<String>();
     }
 
     public void writeLog(String s) {
 	PrintWriter pw = null;
 	try {
 	    pw = new PrintWriter(new FileWriter(Skeens.logFile, true));
-	    pw.append(s);
+	    pw.append(s + "\n");
 	} catch (Exception e) {
 	    throw new RuntimeException(e);
 	} finally {
@@ -75,58 +80,91 @@ public class Skeens extends Thread {
 
     }
 
-    private synchronized Message processPendingQueue(Operation op,
-	    Message newMsg) {
-	Message msg = null;
-	Iterator<Message> it = null;
+    private void printPendingQueue() {
+	Iterator<Message> it = pendingQueue.iterator();
+	// writeLog("[CHECK] Pending Queue");
+	System.out.println("[CHECK] Pending Queue");
+	while (it.hasNext()) {
+	    // writeLog(it.next().toString());
+	    Message msg = it.next();
+	    System.out.print(msg.toString());
+	    System.out.println("\tReply Count: " + msg.getReplyCount());
+	}
+    }
+
+    private Message processPendingQueue(Operation op, Message newMsg) {
+
+	// Lamport's logical Clock. Set clock value to MAX (My Clock,
+	// NewMsg.Clock) + 1
+	logicalClock = Math.max(logicalClock, newMsg.getTimeStamp()) + 1;
+
+	// writeLog("[CHECK] processPendingQueue START");
+	// writeLog("[CHECK] CLOCK= " + logicalClock);
+	// writeLog("[CHECK] New Message=" + newMsg.toString());
+	System.out.println("[CHECK] processPendingQueue START");
+	System.out.println("[CHECK] CLOCK= " + logicalClock);
+	System.out.println("[CHECK] New Message=" + newMsg.toString() + " Reply COunt= " + newMsg.getReplyCount());
+	printPendingQueue();
 
 	switch (op) {
 	case ENQUEUE:
 	    // This is a new broadcast message.
-	    // Increment the timestamp for this receive event (IF NOT
+	    // Increment the logical clock for this receive event (IF NOT
 	    // FROM ME)
-	    if (newMsg.getMsgId().getOriginatorId() != Skeens.myId) {
-		newMsg.setTimeStamp(highestKnownTimestamp.incrementAndGet());
-	    }
+	    // if (newMsg.getMsgId().getOriginatorId() != Skeens.myId) {
+	    // ++logicalClock;
+	    // }
 
-	    // 2. Update the message to set its type = ACK
-	    newMsg.setType(Message.Type.ACK);
+	    // Update the timeStamp to MAX(my LogicalClock, newMsg.TS)
+	    newMsg.setTimeStamp(Math.max(logicalClock, newMsg.getTimeStamp()));
 
-	    // 3. Update the message status to Pending. Add the
+	    // Update the message status to Pending. Add the
 	    // message to the Priority Queue
 	    newMsg.setStatus(Message.State.PENDING);
 	    pendingQueue.add(newMsg);
 	    break;
 
 	case UPDATE:
+	    Message msg = null;
+	    Iterator<Message> it = null;
 	    // Update a particular message with the newMsg
 	    it = pendingQueue.iterator();
+	    boolean found = false;
+
 	    while (it.hasNext()) {
 		msg = it.next();
 		if (msg.equals(newMsg)) {
 		    // Remove this msg from the queue.
+		    found = true;
 		    break;
 		}
 	    }
 	    it = null;
 
 	    // Check if we found the msg
-	    if (msg != null) {
+	    if (found) {
+		// Remove the old msg from the queue
 		pendingQueue.remove(msg);
+		// writeLog("[CHECK] Removed Old Msg: " + msg.toString());
+		System.out
+			.println("[CHECK] Removed Old Msg: " + msg.toString()  + " Reply COunt= " + msg.getReplyCount());
 
 		// Update the msg with newMsg
-		if (newMsg.getTimeStamp() < msg.getTimeStamp()) {
-		    newMsg.setTimeStamp(msg.getTimeStamp());
-		}
 
 		// Check if the new MSG is ACK or FIN
 		if (newMsg.getType().equals(Message.Type.ACK)) {
+		    // If the new ACK has greater TS Then update the Msg TS to
+		    // that
+		    newMsg.setTimeStamp(Math.max(msg.getTimeStamp(),
+			    newMsg.getTimeStamp()));
+
 		    // ACK Msg.: Increment reply count
 		    newMsg.setReplyCount(msg.getReplyCount() + 1);
 
 		    if (newMsg.getReplyCount() == (nodeCount - 1)) {
 			// Received all ACKs. Change state to READY and type to
 			// FINAL
+			System.out.println("[READY] GOT ALL ACKS: ReplyCount= " + newMsg.getReplyCount() + " nodeCount= " + nodeCount);
 			newMsg.setType(Message.Type.FINAL);
 			newMsg.setStatus(Message.State.READY);
 		    }
@@ -138,13 +176,9 @@ public class Skeens extends Thread {
 		    newMsg.setStatus(Message.State.READY);
 		}
 
-	    } else {
-		System.out.println("ERROR: Message \"" + newMsg.getMsgId()
-			+ "\" not found!");
+		// IMP: Add the Updated Message to the priority queue
+		pendingQueue.add(newMsg);
 	    }
-
-	    // IMP: Add the Updated Message to the priority queue
-	    pendingQueue.add(newMsg);
 
 	    // Check the HEAD of the queue. While the head node state is READY,
 	    // deliver it
@@ -154,7 +188,7 @@ public class Skeens extends Thread {
 		// Head of queue ready. Deliver it
 		msgToDeliver = pendingQueue.poll();
 		deliveredMessageQueue.add(msgToDeliver.getPayload());
-		String disp = "Delivered: " + msgToDeliver.toString();
+		String disp = "[SERVICE] Delivered: " + msgToDeliver.toString();
 		System.out.println(disp);
 		writeLog(msgToDeliver.toString());
 	    }
@@ -164,6 +198,14 @@ public class Skeens extends Thread {
 	    break;
 	}
 
+	// writeLog("[CHECK] CLOCK= " + logicalClock);
+	printPendingQueue();
+	// writeLog("[CHECK] New/Update Msg= " + newMsg.toString());
+	// writeLog("[CHECK] processPendingQueue END");
+
+	System.out.println("[CHECK] CLOCK= " + logicalClock);
+	System.out.println("[CHECK] New Message=" + newMsg.toString()  + " Reply COunt= " + newMsg.getReplyCount());
+	System.out.println("[CHECK] processPendingQueue END");
 	// Return the updated message
 	return newMsg;
     }
@@ -171,36 +213,49 @@ public class Skeens extends Thread {
     class SendThread implements Runnable {
 	@Override
 	public void run() {
-	    System.out.println("Starting Send Service...");
+	    System.out.println("\n[SERVICE] Starting Send Service...");
 	    while (keepWorking.get()) {
-		// Read sendQueue and send messages if any
-		while (sendMessageQueue.peek() != null) {
-		    String payload = sendMessageQueue.poll();
-		    try {
-			// Check if this is Result/Done/APP message
-			if (payload.startsWith("=")) {
-			    // This is result message. Send only to leader
-			    Message msg = new Message(
-				    highestKnownTimestamp.incrementAndGet(),
-				    myId, payload);
-			    msg.setType(Message.Type.RESULT);
-			    connection.sendResultToLeader(msg);
-			} else if (payload.equals("DONE")) {
-			    // Processing done. Set variable to stop service
-			    keepWorking.set(false);
-			} else {
-			    // CREATE MESSAGE for payload
-			    Message msg = new Message(
-				    highestKnownTimestamp.incrementAndGet(),
-				    myId, payload);
-			    connection.broadcast(msg);
-			    // Add to my queue
-			    processPendingQueue(Operation.ENQUEUE, msg);
-			    System.out.println("Proposed: " + msg.toString());
+
+		try {
+		    resourcesLock.lock();
+		    applicationQueueLock.lock();
+
+		    // Read sendQueue and send messages if any
+		    while (sendMessageQueue.peek() != null) {
+			String payload = sendMessageQueue.poll();
+			try {
+			    // Check if this is Result/Done/APP message
+			    if (payload.startsWith("=")) {
+				// This is result message. Send only to leader
+				Message msg = new Message(++logicalClock, myId,
+					payload);
+				msg.setType(Message.Type.RESULT);
+				connection.sendToLeader(msg);
+				// connection.broadcast(msg);
+			    } else if (payload.equals("DONE")) {
+				// This will be sent only by leader's
+				// application. Stop service
+				keepWorking.set(false);
+			    } else {
+				// CREATE MESSAGE for payload
+				Message msg = new Message(++logicalClock, myId,
+					payload);
+				// Add to my queue
+				processPendingQueue(Operation.ENQUEUE, msg);
+				System.out.println("[APPLICATION] Proposed: "
+					+ msg.toString());
+				connection.broadcast(msg);
+			    }
+			} catch (Exception e) {
+			    e.printStackTrace();
 			}
-		    } catch (Exception e) {
-			e.printStackTrace();
 		    }
+
+		} catch (Exception e) {
+
+		} finally {
+		    applicationQueueLock.unlock();
+		    resourcesLock.unlock();
 		}
 
 		// Sleep for a moment
@@ -210,16 +265,20 @@ public class Skeens extends Thread {
 		    e.printStackTrace();
 		}
 	    }
-	    System.out.println("Stopping Send Service...");
+	    System.out.println("[SERVICE] Stopping Send Service...");
 	}
     }
 
     class ReceiveThread implements Runnable {
 	@Override
 	public void run() {
-	    System.out.println("Starting Receiving Messages...");
+	    System.out.println("[SERVICE] Starting Receiving Messages...");
 	    while (keepWorking.get()) {
 		try {
+		    // Acquire Resources and Queue Locks
+		    resourcesLock.lock();
+		    applicationQueueLock.lock();
+
 		    LinkedList<Message> receivedMessages = connection.receive();
 		    // Process the messages and Perform SEND/ACK/DELIVER
 		    // ACCORDINGLY
@@ -236,7 +295,11 @@ public class Skeens extends Thread {
 
 			    // Send the ACK/REPLY message to the sending node.
 			    int senderId = message.getMsgId().getOriginatorId();
+			    updatedMsg.setType(Message.Type.ACK);
 			    connection.unicast(senderId, updatedMsg);
+			    System.out.println("[ACK] Sent ACK to Node "
+				    + senderId + " Msg: "
+				    + updatedMsg.toString());
 			    break;
 
 			case ACK:
@@ -273,7 +336,10 @@ public class Skeens extends Thread {
 		    }
 
 		} catch (Exception e) {
-		    e.printStackTrace();
+		} finally {
+		    // notEmpty.signal();
+		    applicationQueueLock.unlock();
+		    resourcesLock.unlock();
 		}
 
 		// Sleep for a moment
@@ -283,8 +349,30 @@ public class Skeens extends Thread {
 		    e.printStackTrace();
 		}
 	    }
-	    System.out.println("Stopping Receiving Messages...");
+	    System.out.println("[SERVICE] Stopping Receiving Messages...");
 	}
+    }
+
+    public ArrayList<String> aDeliver() {
+	// TODO Make this non-blocking
+	ArrayList<String> messages = new ArrayList<String>();
+
+	applicationQueueLock.lock();
+
+	while (deliveredMessageQueue.peek() != null) {
+	    messages.add(deliveredMessageQueue.poll());
+	}
+
+	applicationQueueLock.unlock();
+
+	return messages;
+    }
+
+    public void aBroadCast(String message) {
+	applicationQueueLock.lock();
+	sendMessageQueue.add(message);
+	applicationQueueLock.unlock();
+
     }
 
     @Override
@@ -293,9 +381,9 @@ public class Skeens extends Thread {
 	Thread sendThread = new Thread(new SendThread());
 	Thread receiveThread = new Thread(new ReceiveThread());
 
-	System.out.println("SERVICE: Starting Send Thread...");
+	System.out.println("[SERVICE] Starting Send Thread...");
 	sendThread.start();
-	System.out.println("SERVICE: Starting Receive Thread...");
+	System.out.println("[SERVICE] Starting Receive Thread...");
 	receiveThread.start();
 
 	// Wait for them to end
@@ -306,6 +394,7 @@ public class Skeens extends Thread {
 	    e.printStackTrace();
 	}
 
-	System.out.println("Stopping Skeen's service");
+	System.out.println("[SERVICE] Stopping Skeen's service");
     }
+
 }

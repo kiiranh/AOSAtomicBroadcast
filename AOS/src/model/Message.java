@@ -43,7 +43,6 @@ public class Message implements Comparable<Message> {
 	public int hashCode() {
 	    final int prime = 31;
 	    int result = 1;
-	    result = prime * result + getOuterType().hashCode();
 	    result = prime * result + originatorId;
 	    result = prime * result + originatorTimeStamp;
 	    return result;
@@ -65,10 +64,6 @@ public class Message implements Comparable<Message> {
 	    if (originatorTimeStamp != other.originatorTimeStamp)
 		return false;
 	    return true;
-	}
-
-	private Message getOuterType() {
-	    return Message.this;
 	}
 
 	@Override

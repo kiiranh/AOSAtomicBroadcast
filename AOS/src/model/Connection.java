@@ -24,7 +24,6 @@ import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SctpServerChannel;
 
-@SuppressWarnings("restriction")
 public class Connection {
 
     public enum Stream {
@@ -66,24 +65,24 @@ public class Connection {
 	// IDs
 	while (nodes.get(i).getNodeId() != myId) {
 	    // Connect to this node
-	    System.out.println("Trying to connect to Node Id: " + i);
+	    System.out.println("[NODE] Trying to connect to Node Id: " + i);
 	    InetSocketAddress serverAddr = new InetSocketAddress(nodes.get(i)
 		    .getHostname(), nodes.get(i).getPort());
 	    SctpChannel sc = SctpChannel.open(serverAddr, 0, 0);
 	    // channelList.add(sc);
 	    sc.configureBlocking(false);
 	    nodeChannelMap.put(i, sc);
-	    System.out.println("Connected to Node Id: " + i);
-	    System.out.println("\tLocal Channel: "
-		    + sc.getAllLocalAddresses().iterator().next()
-		    + " Remote Channel: "
-		    + sc.getRemoteAddresses().iterator().next());
+	    System.out.println("[NODE] Connected to Node Id: " + i);
+	    // System.out.println("\tLocal Channel: "
+	    // + sc.getAllLocalAddresses().iterator().next()
+	    // + " Remote Channel: "
+	    // + sc.getRemoteAddresses().iterator().next());
 	    ++i;
 	}
 
 	// i points to myId
 	int myPort = nodes.get(i).getPort();
-	System.out.println("My Port = " + myPort);
+	System.out.println("[NODE] My Port = " + myPort);
 	++i;
 
 	SctpServerChannel ssc = SctpServerChannel.open();
@@ -93,15 +92,15 @@ public class Connection {
 	// higher IDs remain.
 	// Accept connections from nodes with higher IDs.
 	while (nodes.size() != i) {
-	    System.out.println("Awaiting connection from Node Id: " + i);
+	    System.out.println("[NODE] Awaiting connection from Node Id: " + i);
 	    SctpChannel sc = ssc.accept();
 	    // channelList.add(sc);
 	    nodeChannelMap.put(i, sc);
-	    System.out.println("Accepted connection from Node Id: " + i);
-	    System.out.println("\tLocal Channel: "
-		    + sc.getAllLocalAddresses().iterator().next()
-		    + " Remote Channel: "
-		    + sc.getRemoteAddresses().iterator().next());
+	    System.out.println("[NODE] Accepted connection from Node Id: " + i);
+	    // System.out.println("\tLocal Channel: "
+	    // + sc.getAllLocalAddresses().iterator().next()
+	    // + " Remote Channel: "
+	    // + sc.getRemoteAddresses().iterator().next());
 	    ++i;
 	}
     }
@@ -127,7 +126,7 @@ public class Connection {
 	    messageInfo = MessageInfo
 		    .createOutgoing(null, Stream.CONTROL.value);
 	    channel.send(buf, messageInfo);
-	    System.out.println("Signalled START to Channel: "
+	    System.out.println("[LEADER NODE] Signalled START to Channel: "
 		    + channel.getRemoteAddresses().iterator().next());
 	}
 
@@ -145,7 +144,7 @@ public class Connection {
 
 	MessageInfo messageInfo = null;
 	buf.clear();
-	System.out.println("Awaiting START signal from Leader");
+	System.out.println("[NODE] Awaiting START signal from Leader");
 
 	while (true) {
 	    // *** ASSUMPTION *** Assuming the first node in the config file to
@@ -156,8 +155,9 @@ public class Connection {
 		    && messageInfo.streamNumber() == Stream.CONTROL.value) {
 		String msg = decoder.decode(buf).toString();
 		if (msg.contains("" + Action.START)) {
-		    System.out.println("Received Signal START from Leader: "
-			    + msg);
+		    System.out
+			    .println("[NODE] Received Signal START from Leader: "
+				    + msg);
 		    break;
 		}
 	    }
@@ -170,43 +170,56 @@ public class Connection {
 	}
     }
 
-    public void sendResultToLeader(Message resultMsg) throws Exception {
-
-	synchronized (this) {
-	    // ASSUMING FIRST NODE IS LEADER
-	    SctpChannel channel = nodeChannelMap.get(0);
-	    if (channel == null) {
-		throw new Exception("Channel for node 0 not found!");
-	    }
-
-	    ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
-	    CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
-
-	    cbuf.put(resultMsg.toString()).flip();
-	    encoder.encode(cbuf, buf, true);
-	    buf.flip();
-
-	    /* send the message on the DATA stream */
-	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
-		    Stream.DATA.value);
-	    channel.send(buf, messageInfo);
-	    // System.out.println("Sent Result: " + resultMsg.toString());
-
+    public void sendToLeader(Message resultMsg) throws Exception {
+	// ASSUMING FIRST NODE IS LEADER
+	SctpChannel channel = nodeChannelMap.get(0);
+	if (channel == null) {
+	    throw new Exception("Channel for node 0 not found!");
 	}
+
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
+
+	cbuf.put(resultMsg.toString()).flip();
+	encoder.encode(cbuf, buf, true);
+	buf.flip();
+
+	/* send the message on the DATA stream */
+	MessageInfo messageInfo = MessageInfo.createOutgoing(null,
+		Stream.DATA.value);
+	channel.send(buf, messageInfo);
+	// System.out.println("Sent Result: " + resultMsg.toString());
     }
 
     public void unicast(int nodeId, Message msg) throws Exception {
+	SctpChannel channel = nodeChannelMap.get(nodeId);
+	if (channel == null) {
+	    throw new Exception("Channel for node " + nodeId + " not found!");
+	}
 
-	synchronized (this) {
-	    SctpChannel channel = nodeChannelMap.get(nodeId);
-	    if (channel == null) {
-		throw new Exception("Channel for node " + nodeId
-			+ " not found!");
-	    }
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
 
-	    ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
-	    CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
+	cbuf.put(msg.toString()).flip();
+	encoder.encode(cbuf, buf, true);
+	buf.flip();
 
+	/* send the message on the DATA stream */
+	MessageInfo messageInfo = MessageInfo.createOutgoing(null,
+		Stream.DATA.value);
+	channel.send(buf, messageInfo);
+	System.out.println("Unicast Message: " + msg.toString());
+    }
+
+    public void broadcast(Message msg) throws IOException {
+	// 1. Convert Message to String
+	// 2. Broadcast over All Channels.
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
+
+	for (Integer node : nodeChannelMap.keySet()) {
+	    cbuf.clear();
+	    buf.clear();
 	    cbuf.put(msg.toString()).flip();
 	    encoder.encode(cbuf, buf, true);
 	    buf.flip();
@@ -214,71 +227,50 @@ public class Connection {
 	    /* send the message on the DATA stream */
 	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
 		    Stream.DATA.value);
-	    channel.send(buf, messageInfo);
-	    // System.out.println("Unicast Message: " + msg.toString());
+	    nodeChannelMap.get(node).send(buf, messageInfo);
+	    System.out.println("Sent Msg " + msg.toString() + " to Node "
+		    + node);
 	}
-    }
-
-    public void broadcast(Message msg) throws IOException {
-	// 1. Convert Message to String
-	// 2. Broadcast over All Channels.
-	synchronized (this) {
-	    ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
-	    CharBuffer cbuf = CharBuffer.allocate(BUFFER_SIZE);
-
-	    for (SctpChannel channel : nodeChannelMap.values()) {
-		cbuf.clear();
-		buf.clear();
-		cbuf.put(msg.toString()).flip();
-		encoder.encode(cbuf, buf, true);
-		buf.flip();
-
-		/* send the message on the DATA stream */
-		MessageInfo messageInfo = MessageInfo.createOutgoing(null,
-			Stream.DATA.value);
-		channel.send(buf, messageInfo);
-	    }
-
-	    // System.out.println("Broadcast Message: " + msg.toString());
-	}
+	// System.out.println("Broadcast Message: " + msg.toString());
     }
 
     public LinkedList<Message> receive() throws IOException {
-	synchronized (this) {
-	    LinkedList<Message> receivedMessages = new LinkedList<Message>();
-	    ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
+	LinkedList<Message> receivedMessages = new LinkedList<Message>();
+	ByteBuffer buf = ByteBuffer.allocateDirect(BUFFER_SIZE);
 
-	    // 1. Read messages from channel
-	    MessageInfo messageInfo = null;
-	    // buf.clear();
-	    // System.out.println("Checking message on Channel...");
+	// 1. Read messages from channel
+	MessageInfo messageInfo = null;
+	// buf.clear();
+	// System.out.println("Checking message on Channel...");
 
-	    for (Integer node : nodeChannelMap.keySet()) {
-		// for (SctpChannel channel : channelList) {
-		// Get all available messages from each channel
-		// messageInfo = channel.receive(buf, System.out, null);
-		// System.out.println("Calling receive on CHannel" + node);
-		messageInfo = nodeChannelMap.get(node).receive(buf, null, null);
-		// System.out.println("Got message from Channel " + node);
-		buf.flip();
-		if (buf.remaining() > 0
-			&& messageInfo.streamNumber() == Stream.DATA.value) {
-		    String msgStr = decoder.decode(buf).toString();
+	for (Integer node : nodeChannelMap.keySet()) {
+	    // for (SctpChannel channel : channelList) {
+	    // Get all available messages from each channel
+	    // messageInfo = channel.receive(buf, System.out, null);
+	    // System.out.println("Calling receive on CHannel" + node);
+	    messageInfo = nodeChannelMap.get(node).receive(buf, null, null);
+	    // System.out.println("Got message from Channel " + node);
+	    buf.flip();
+	    if (buf.remaining() > 0
+		    && messageInfo.streamNumber() == Stream.DATA.value) {
+		String msgStr = decoder.decode(buf).toString();
 
-		    // 2. Parse message and add to queue
-		    Message msg = Message.parseMessage(msgStr);
-		    receivedMessages.add(msg);
-		}
-		buf.clear();
-		try {
-		    Thread.sleep(5);
-		} catch (InterruptedException e) {
-		    e.printStackTrace();
-		}
+		// 2. Parse message and add to queue
+		Message msg = Message.parseMessage(msgStr);
+		receivedMessages.add(msg);
+		System.out.println("Received msg " + msg.toString()
+			+ " from Node " + node);
 	    }
-
-	    return receivedMessages;
+	    buf.clear();
+	    // try {
+	    // Thread.sleep(5);
+	    // } catch (InterruptedException e) {
+	    // e.printStackTrace();
+	    // }
 	}
+
+	return receivedMessages;
+
     }
 
     public void tearDown() throws Exception {
