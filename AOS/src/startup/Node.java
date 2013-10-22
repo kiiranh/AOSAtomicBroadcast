@@ -58,7 +58,7 @@ public class Node {
 	} catch (IOException e) {
 	}
 
-	System.out.println("\n[NODE] Cleaned Up Previous logs.\n");
+	System.out.println("\n <<< CLEARED PREVIOUS DELIVERY LOG >>>");
     }
 
     private void readConfigFile() throws Exception {
@@ -126,13 +126,13 @@ public class Node {
 
 	// Just in case nodeCount wasn't updated in the config file
 	nodeCount = nodeList.size();
-	System.out.println("Node count= " + nodeCount);
-	System.out.println("--- Nodes ---");
-	for (NodeInfo node : nodeList) {
-	    System.out.println(node.toString());
-	}
+	// System.out.println("Node count= " + nodeCount);
+	// System.out.println("--- Nodes ---");
+	// for (NodeInfo node : nodeList) {
+	// System.out.println(node.toString());
+	// }
 
-	System.out.println("\n[NODE] CONFIGURATION FILE READ\n");
+	System.out.println("\n <<< CONFIGURATION FILE READ >>>");
     }
 
     private String getMD5Checksum(String absoluteFilePath) throws Exception {
@@ -164,7 +164,7 @@ public class Node {
 	// Performed by leader
 	// Compare the log files to my log file
 	String leaderChecksum = getMD5Checksum(deliveryLog);
-	System.out.println("[VERIFICATION] Leader Delivery file Checksum: "
+	System.out.println(" [VERIFICATION] Leader Delivery file Checksum: "
 		+ leaderChecksum);
 
 	String otherChecksum = "Different";
@@ -175,7 +175,7 @@ public class Node {
 		// Compute others checksum and compare.
 		otherChecksum = getMD5Checksum(deliveryLogDir + "node"
 			+ node.getNodeId() + ".log");
-		System.out.println("[VERIFICATION] Node " + node.getNodeId()
+		System.out.println(" [VERIFICATION] Node " + node.getNodeId()
 			+ " Delivery file Checksum: " + otherChecksum);
 		if (!leaderChecksum.equals(otherChecksum)) {
 		    System.out
@@ -189,7 +189,7 @@ public class Node {
 
 	if (pass) {
 	    System.out
-		    .println("\n <<< [VERIFICATION] MESSAGE DELIVERY LOG CONSISTENT: SUCCESS :) >>> \n");
+		    .println("\n <<< [VERIFICATION] MESSAGE DELIVERY LOG CONSISTENT: SUCCESS :) >>>");
 	}
     }
 
@@ -203,21 +203,23 @@ public class Node {
 
 	// Setup sctp connections
 	connection.setUp(nodeList, myId);
+	System.out.println("\n <<< CONNECTION SETUP DONE >>>");
 	Thread.sleep(100);
 
 	// Elect Leader (Node 0 or first node in the list)
 	leaderId = nodeList.get(0).getNodeId();
 	boolean amILeader = false;
 
-	System.out.println("[NODE] LEADER NODE ID: " + leaderId);
-
 	// Send leader info to all (Or assume Node 0)
 	if (leaderId == myId) {
 	    // I'm leader. I will start off the program on all nodes.
+	    System.out.println("\n <<< LEADER NODE ID: " + leaderId
+		    + " (ME) >>>");
 	    amILeader = true;
 	    connection.leaderNotifyStart(leaderId);
 	} else {
 	    // I'm not leader. I will wait for "START" from leader.
+	    System.out.println("\n <<< LEADER NODE ID: " + leaderId + " >>>");
 	    connection.awaitStartFromLeader();
 	}
 
@@ -248,13 +250,13 @@ public class Node {
 
 	// Halt
 	connection.tearDown();
-	System.out.println("\n[NODE] TERMINATED CONNECTIONS\n");
+	System.out.println("\n <<< CONNECTION TERMINATION DONE >>>");
 
 	// VERIFY THAT THE MESSAGES WERE TOTALLY ORDERED BY READING LOG FILES
 	if (leaderId == myId) {
 	    Thread.sleep(2000);
 	    System.out
-		    .println("\n[LEADER NODE] Verifying message ordering on all nodes...");
+		    .println("\n <<< [LEADER] VERIFYING MESSAGE ORDER ON ALL NODES >>>");
 	    verifyMessageOrder();
 	}
 

@@ -21,7 +21,7 @@ public final class DistributedApplication extends Thread {
     private ArrayList<String> resultList = new ArrayList<String>();
     private int pendingResultCount;
     private static Skeens service;
-    private static final int MY_COMPUTATION_COUNT = 50;
+    private static final int MY_COMPUTATION_COUNT = 5;
 
     public DistributedApplication(String original, int nodeCount,
 	    boolean amILeader, Skeens service) {
@@ -36,7 +36,6 @@ public final class DistributedApplication extends Thread {
 	actions.add("RI1"); // Replace I/i with 1
 	actions.add("RA4"); // Replace A/a with 4
 	actions.add("REV"); // Reverse the string
-	
 
 	this.nodeCount = nodeCount;
 	this.pendingResultCount = nodeCount - 1;
@@ -46,8 +45,8 @@ public final class DistributedApplication extends Thread {
 
     private void processResults() {
 	// At this point, App processing is done
-	System.out.println("\n[APPLICATION] MY FINAL OBJECT: " + localString
-		+ "\n");
+	System.out.println("\n <<< [APPLICATION] MY FINAL OBJECT: "
+		+ localString + " >>> ");
 	if (amILeader) {
 	    // Leader:
 	    // Wait for result from all nodes
@@ -74,20 +73,21 @@ public final class DistributedApplication extends Thread {
 	    for (String result : resultList) {
 		if (!result.equals(localString)) {
 		    System.out
-			    .println("\n <<< [VERIFICATION] DISTRIBUTED COMPUTATION INCONSISTENT => FAILED :) >>>\n");
+			    .println("\n <<< [VERIFICATION] DISTRIBUTED COMPUTATION INCONSISTENT => FAILED :) >>>");
 		    return;
 		}
 	    }
 
 	    System.out
-		    .println("\n <<< [VERIFICATION] DISTRIBUTED COMPUTATION CONSISTENT => SUCCESS :) >>>\n");
+		    .println("\n <<< [VERIFICATION] DISTRIBUTED COMPUTATION CONSISTENT => SUCCESS :) >>>");
 	    // service.aBroadCast("DONE");
 
 	} else {
 	    // Worker:
 	    // Send result to Leader Node
 	    service.aBroadCast("=" + localString);
-	    System.out.println("[APPLICATION] SENT RESULT TO LEADER");
+	    System.out
+		    .println("\n <<< [APPLICATION] SENT RESULT TO LEADER >>>");
 	}
     }
 
@@ -163,8 +163,6 @@ public final class DistributedApplication extends Thread {
 			    localString = localString.concat("*");
 			    break;
 
-
-
 			case 6:
 			    localString = localString.replaceAll("[Ii]", "1");
 			    break;
@@ -177,7 +175,6 @@ public final class DistributedApplication extends Thread {
 			    localString = new StringBuilder(localString)
 				    .reverse().toString();
 			    break;
-
 
 			default:
 			    break;
@@ -193,15 +190,16 @@ public final class DistributedApplication extends Thread {
 
     @Override
     public void run() {
-	System.out.println("\n[APPLICATION] INITIAL OBJECT: " + localString
-		+ "\n");
+	System.out.println("\n <<< APPLICATION STARTED >>> ");
+	System.out.println("\n <<< [APPLICATION] INITIAL OBJECT: "
+		+ localString + " >>> \n");
 
 	Thread sendThread = new Thread(new SendThread());
 	Thread receiveThread = new Thread(new ReceiveThread());
 
-	System.out.println("[APPLICATION] Starting Send Thread...");
+	// System.out.println("[APPLICATION] Starting Send Thread...");
 	sendThread.start();
-	System.out.println("[APPLICATION] Starting Receive Thread...");
+	// System.out.println("[APPLICATION] Starting Receive Thread...");
 	receiveThread.start();
 
 	// Wait for them to end
@@ -214,5 +212,6 @@ public final class DistributedApplication extends Thread {
 
 	processResults();
 	service.aBroadCast("DONE");
+	System.out.println("\n <<< APPLICATION STOPPED >>>");
     }
 }

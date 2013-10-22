@@ -58,21 +58,21 @@ public class Connection {
     public void setUp(ArrayList<NodeInfo> nodes, int myId) throws IOException {
 	// Selectively create connections to the given nodes.
 	int i = 0;
-	System.out.println("MyID: " + myId);
+	// System.out.println("[NODE] MyID: " + myId);
 
 	// Connect to nodes with lower IDs
 	// *** ASSUMPTION *** configuration file has nodes in ascending order of
 	// IDs
 	while (nodes.get(i).getNodeId() != myId) {
 	    // Connect to this node
-	    System.out.println("[NODE] Trying to connect to Node Id: " + i);
+	    // System.out.println("[NODE] Trying to connect to Node Id: " + i);
 	    InetSocketAddress serverAddr = new InetSocketAddress(nodes.get(i)
 		    .getHostname(), nodes.get(i).getPort());
 	    SctpChannel sc = SctpChannel.open(serverAddr, 0, 0);
 	    // channelList.add(sc);
 	    sc.configureBlocking(false);
 	    nodeChannelMap.put(i, sc);
-	    System.out.println("[NODE] Connected to Node Id: " + i);
+	    // System.out.println("[NODE] Connected to Node Id: " + i);
 	    // System.out.println("\tLocal Channel: "
 	    // + sc.getAllLocalAddresses().iterator().next()
 	    // + " Remote Channel: "
@@ -82,7 +82,7 @@ public class Connection {
 
 	// i points to myId
 	int myPort = nodes.get(i).getPort();
-	System.out.println("[NODE] My Port = " + myPort);
+	//System.out.println("[NODE] My Port = " + myPort);
 	++i;
 
 	SctpServerChannel ssc = SctpServerChannel.open();
@@ -92,11 +92,11 @@ public class Connection {
 	// higher IDs remain.
 	// Accept connections from nodes with higher IDs.
 	while (nodes.size() != i) {
-	    System.out.println("[NODE] Awaiting connection from Node Id: " + i);
+	    //System.out.println("[NODE] Awaiting connection from Node Id: " + i);
 	    SctpChannel sc = ssc.accept();
 	    // channelList.add(sc);
 	    nodeChannelMap.put(i, sc);
-	    System.out.println("[NODE] Accepted connection from Node Id: " + i);
+	    // System.out.println("[NODE] Accepted connection from Node Id: " + i);
 	    // System.out.println("\tLocal Channel: "
 	    // + sc.getAllLocalAddresses().iterator().next()
 	    // + " Remote Channel: "
@@ -126,8 +126,7 @@ public class Connection {
 	    messageInfo = MessageInfo
 		    .createOutgoing(null, Stream.CONTROL.value);
 	    channel.send(buf, messageInfo);
-	    System.out.println("[LEADER NODE] Signalled START to Channel: "
-		    + channel.getRemoteAddresses().iterator().next());
+	    //System.out.println("[LEADER NODE] Signalled START to Channel: " + channel.getRemoteAddresses().iterator().next());
 	}
 
 	cbuf.clear();
@@ -208,7 +207,7 @@ public class Connection {
 	MessageInfo messageInfo = MessageInfo.createOutgoing(null,
 		Stream.DATA.value);
 	channel.send(buf, messageInfo);
-	System.out.println("Unicast Message: " + msg.toString());
+	// System.out.println("Unicast Message: " + msg.toString());
     }
 
     public void broadcast(Message msg) throws IOException {
@@ -228,8 +227,8 @@ public class Connection {
 	    MessageInfo messageInfo = MessageInfo.createOutgoing(null,
 		    Stream.DATA.value);
 	    nodeChannelMap.get(node).send(buf, messageInfo);
-	    System.out.println("Sent Msg " + msg.toString() + " to Node "
-		    + node);
+	    // System.out.println("Sent Msg " + msg.toString() + " to Node "
+	    // + node);
 	}
 	// System.out.println("Broadcast Message: " + msg.toString());
     }
@@ -258,8 +257,8 @@ public class Connection {
 		// 2. Parse message and add to queue
 		Message msg = Message.parseMessage(msgStr);
 		receivedMessages.add(msg);
-		System.out.println("Received msg " + msg.toString()
-			+ " from Node " + node);
+		// System.out.println("Received msg " + msg.toString()
+		// + " from Node " + node);
 	    }
 	    buf.clear();
 	    // try {
