@@ -47,8 +47,8 @@ public final class DistributedApplication extends Thread {
     private void processResults() {
 	// At this point, App processing is done
 	// FIXME For sufficiently high number of executions the string length
-	// could
-	// outgrow buffer size. So we limit the Final String to 350 bytes
+	// could outgrow buffer size. So we limit the Final String to 400 bytes
+	// Buffer size = 512 bytes
 	if (localString.length() > 400) {
 	    localString = localString.substring(0, 400);
 	}
