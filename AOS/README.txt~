@@ -26,9 +26,9 @@
 1. Make sure you are in the unzipped AOS directory.
 2. The default configuration file is in the AOS/src folder: AOS/src/config.txt
 3. Make required modifications to the configuration file.
-4. cd to the bin folder: cd AOS/bin.
+4. cd to the bin folder: cd bin.
 5. From the bin directory execute the following command:
-   java startup.Node <NodeID> <Path of config file> <Path of directory where log is to be placed>
+   java startup.Node <NodeID> <of config file> <Path of directory where log is to be placed>
    Eg: java startup.Node 0 ../src/config.txt ./
 6. This will start the program on the system. 
 7. The program has to be started on all the nodes mentioned in the config file. Only when all nodes are up

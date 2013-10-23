@@ -22,7 +22,7 @@ public final class DistributedApplication extends Thread {
     private ArrayList<String> resultList = new ArrayList<String>();
     private int pendingResultCount;
     private static Skeens service;
-    private static final int MY_COMPUTATION_COUNT = 5;
+    private static final int MY_COMPUTATION_COUNT = 10;
 
     public DistributedApplication(String original, int nodeCount,
 	    boolean amILeader, Skeens service) {
@@ -46,6 +46,13 @@ public final class DistributedApplication extends Thread {
 
     private void processResults() {
 	// At this point, App processing is done
+	// FIXME For sufficiently high number of executions the string length
+	// could
+	// outgrow buffer size. So we limit the Final String to 350 bytes
+	if (localString.length() > 400) {
+	    localString = localString.substring(0, 400);
+	}
+
 	System.out.println("\n <<< [APPLICATION] MY FINAL OBJECT: "
 		+ localString + " >>> ");
 	if (amILeader) {
@@ -135,7 +142,7 @@ public final class DistributedApplication extends Thread {
 			// ACTION MESSAGE
 			System.out.println("\n[DELIVER] ACTION: "
 				+ actions.get(Integer.valueOf(msg)));
-			System.out.print("BEFORE: " + localString);
+			System.out.println("BEFORE: " + localString);
 			switch (Integer.valueOf(msg)) {
 			case 0:
 			    localString = localString.toUpperCase();
@@ -184,7 +191,7 @@ public final class DistributedApplication extends Thread {
 			    break;
 			}
 
-			System.out.println("\tAFTER: " + localString);
+			System.out.println("AFTER: " + localString);
 			--msgToProcess;
 		    }
 		}

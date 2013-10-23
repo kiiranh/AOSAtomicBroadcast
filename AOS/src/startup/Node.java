@@ -205,7 +205,7 @@ public class Node {
 	System.out.println("\n <<< CONNECTION SETUP STARTED >>>");
 	connection.setUp(nodeList, myId);
 	System.out.println("\n <<< CONNECTION SETUP DONE >>>");
-	Thread.sleep(1000);
+	Thread.sleep(2000);
 
 	// Elect Leader (Node 0 or first node in the list)
 	leaderId = nodeList.get(0).getNodeId();
@@ -223,6 +223,8 @@ public class Node {
 	    System.out.println("\n <<< LEADER NODE ID: " + leaderId + " >>>");
 	    connection.awaitStartFromLeader();
 	}
+
+	Thread.sleep(2000);
 
 	// Start processing
 	// Start skeens implementation (Own Thread)

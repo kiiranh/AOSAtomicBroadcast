@@ -43,7 +43,7 @@ public class Connection {
     private HashMap<Integer, SctpChannel> nodeChannelMap;
     // private ArrayList<SctpChannel> channelList;
 
-    public static final int BUFFER_SIZE = 70;
+    public static final int BUFFER_SIZE = 512;
     private final Charset charset = Charset.forName("ISO-8859-1");
     private CharsetEncoder encoder;
     private CharsetDecoder decoder;
